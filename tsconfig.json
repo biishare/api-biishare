@@ -1,0 +1,63 @@
+{
+  "compilerOptions": {
+    "rootDir": "./",
+    "outDir": "./build",
+
+    "module": "node16",
+    "target": "ES2019",
+    "moduleResolution": "node16",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*",
+    "api/**/*"
+  ]
+}
+
+
+
+// {
+//   "compilerOptions": {
+//     "rootDir": "./",
+//     "outDir": "./build",
+
+//     "module": "commonjs",
+//     "target": "ES6",
+
+//     "sourceMap": true,
+//     "declaration": true,
+//     "declarationMap": true,
+
+//     "strict": true,
+//     "noUncheckedIndexedAccess": true,
+//     "exactOptionalPropertyTypes": true,
+//     "forceConsistentCasingInFileNames": true,
+
+//     "esModuleInterop": true,
+//     "allowSyntheticDefaultImports": true,
+
+//     "isolatedModules": true,
+//     "skipLibCheck": true,
+//     "moduleDetection": "auto",
+
+//     "baseUrl": "./src",
+//     "paths": {
+//       "@/*": ["*"]
+//     }
+//   },
+//   "include": [
+//     "src/**/*",
+//     "api/**/*"
+//   ]
+// }
+
+
