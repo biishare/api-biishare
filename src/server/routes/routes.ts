@@ -1,8 +1,25 @@
 import { Router, Request, Response } from "express";
+import multer from "multer";
 import { PostController } from "../controllers/app";
 import { ShortController } from "../controllers/app";
+import { AuthController } from "../controllers/app";
 import { AdController } from "../controllers/ad/app";
+import { authenticate } from "../middlewares/auth";
 const router = Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    if (!file.mimetype.startsWith("image/")) {
+      callback(new Error("Apenas imagens sao permitidas."));
+      return;
+    }
+
+    callback(null, true);
+  },
+});
 
 /* ================================
  * ROOT
@@ -20,12 +37,38 @@ router.get("/", (req: Request, res: Response) => {
         filters: "GET /posts/filters",
         byId: "GET /posts/:id",
       },
-       curiosities: {
+      curiosities: {
         create: "POST /curiosities",
+      },
+      auth: {
+        register: "POST /auth/register",
+        login: "POST /auth/login",
+        logout: "POST /auth/logout",
+        me: "GET /auth/me",
+        username: "GET /auth/username?username=:username",
+        profileImages: "POST /auth/profile-images",
       },
     },
   });
 });
+
+/* ================================
+ * AUTH
+ * ================================ */
+router.post("/auth/register", AuthController.register);
+router.post("/auth/login", AuthController.login);
+router.post("/auth/logout", AuthController.logout);
+router.get("/auth/username", AuthController.checkUsername);
+router.get("/auth/me", authenticate, AuthController.getMe);
+router.post(
+  "/auth/profile-images",
+  authenticate,
+  upload.fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "cover", maxCount: 1 },
+  ]),
+  AuthController.uploadProfileImages
+);
 
 /* ================================
  * POSTS

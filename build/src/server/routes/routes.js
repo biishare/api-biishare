@@ -1,12 +1,31 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.router = void 0;
 const express_1 = require("express");
+const multer_1 = __importDefault(require("multer"));
 const app_1 = require("../controllers/app");
 const app_2 = require("../controllers/app");
-const app_3 = require("../controllers/ad/app");
+const app_3 = require("../controllers/app");
+const app_4 = require("../controllers/ad/app");
+const auth_1 = require("../middlewares/auth");
 const router = (0, express_1.Router)();
 exports.router = router;
+const upload = (0, multer_1.default)({
+    storage: multer_1.default.memoryStorage(),
+    limits: {
+        fileSize: 2 * 1024 * 1024,
+    },
+    fileFilter: (_req, file, callback) => {
+        if (!file.mimetype.startsWith("image/")) {
+            callback(new Error("Apenas imagens sao permitidas."));
+            return;
+        }
+        callback(null, true);
+    },
+});
 /* ================================
  * ROOT
  * ================================ */
@@ -26,9 +45,29 @@ router.get("/", (req, res) => {
             curiosities: {
                 create: "POST /curiosities",
             },
+            auth: {
+                register: "POST /auth/register",
+                login: "POST /auth/login",
+                logout: "POST /auth/logout",
+                me: "GET /auth/me",
+                username: "GET /auth/username?username=:username",
+                profileImages: "POST /auth/profile-images",
+            },
         },
     });
 });
+/* ================================
+ * AUTH
+ * ================================ */
+router.post("/auth/register", app_3.AuthController.register);
+router.post("/auth/login", app_3.AuthController.login);
+router.post("/auth/logout", app_3.AuthController.logout);
+router.get("/auth/username", app_3.AuthController.checkUsername);
+router.get("/auth/me", auth_1.authenticate, app_3.AuthController.getMe);
+router.post("/auth/profile-images", auth_1.authenticate, upload.fields([
+    { name: "avatar", maxCount: 1 },
+    { name: "cover", maxCount: 1 },
+]), app_3.AuthController.uploadProfileImages);
 /* ================================
  * POSTS
  * ================================ */
@@ -54,6 +93,6 @@ router.get("/toques/:id", app_2.ShortController.getToqueById); // Detalhe por ID
 /* ================================
  * Ads
  * ================================ */
-router.post("/ads", app_3.AdController.create); // Criação
-router.get("/ads", app_3.AdController.getAds); // Listagem
-router.get("/ads/:id", app_3.AdController.getAdById); // Detalhe por ID
+router.post("/ads", app_4.AdController.create); // Criação
+router.get("/ads", app_4.AdController.getAds); // Listagem
+router.get("/ads/:id", app_4.AdController.getAdById); // Detalhe por ID
