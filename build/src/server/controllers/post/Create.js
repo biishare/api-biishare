@@ -5,11 +5,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.create = void 0;
 const app_1 = __importDefault(require("../../models/post/app"));
+const utils_1 = require("./utils");
 const create = async (req, res) => {
     try {
-        const { subjectId, title, year, level, contentType, imageLink, videos, documents, } = req.body;
+        const { subjectId, subjectIds: rawSubjectIds, title, description, level, contentType, imageLink, videos, documents, } = req.body;
+        const subjectIds = (0, utils_1.normalizeSubjectIds)(rawSubjectIds, subjectId);
+        const normalizedTitle = typeof title === "string" ? title.trim() : "";
+        const normalizedDescription = typeof description === "string" ? description.trim() : "";
+        const normalizedLevel = typeof level === "string" ? level.trim() : "";
+        const normalizedImageLink = typeof imageLink === "string" ? imageLink.trim() : "";
         /* ---------- VALIDAÇÕES BASE ---------- */
-        if (!subjectId || !title || !year || !level || !contentType || !imageLink) {
+        if (subjectIds.length === 0 ||
+            !normalizedTitle ||
+            !normalizedDescription ||
+            !normalizedLevel ||
+            !contentType ||
+            !normalizedImageLink) {
             res.status(400).json({
                 error: "Campos obrigatórios ausentes.",
             });
@@ -41,12 +52,13 @@ const create = async (req, res) => {
         }
         /* ---------- CREATE ---------- */
         const newPost = new app_1.default({
-            subjectId,
-            title,
-            year: Number(year),
-            level,
+            subjectIds,
+            subjectId: subjectIds[0],
+            title: normalizedTitle,
+            description: normalizedDescription,
+            level: normalizedLevel,
             contentType,
-            imageLink,
+            imageLink: normalizedImageLink,
             ...(contentType === "video" && {
                 videos,
                 documents: undefined,

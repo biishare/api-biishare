@@ -4,7 +4,6 @@ import { Request, Response } from "express";
  * Query params:
  * - subjectId
  * - level
- * - year
  * - contentType  ✅ (ADICIONADO)
  * - page (opcional)
  * - limit (opcional)

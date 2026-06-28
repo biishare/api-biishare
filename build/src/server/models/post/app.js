@@ -62,19 +62,27 @@ const mediaSchema = new mongoose_1.Schema({
 const postSchema = new mongoose_1.Schema({
     subjectId: {
         type: String,
-        required: true,
+        required: false,
         trim: true,
+        default: undefined,
+    },
+    subjectIds: {
+        type: [String],
+        required: true,
+        validate: {
+            validator: (value) => Array.isArray(value) && value.length > 0,
+            message: "Selecione pelo menos uma disciplina",
+        },
     },
     title: {
         type: String,
         required: true,
         trim: true,
     },
-    year: {
-        type: Number,
+    description: {
+        type: String,
         required: true,
-        min: 1900,
-        max: 2100,
+        trim: true,
     },
     level: {
         type: String,
@@ -109,15 +117,32 @@ const postSchema = new mongoose_1.Schema({
 postSchema.index({ createdAt: -1 });
 // Filtros combinados (frontend via URL)
 postSchema.index({
+    subjectIds: 1,
+    level: 1,
+    contentType: 1,
+});
+postSchema.index({
     subjectId: 1,
     level: 1,
-    year: 1,
     contentType: 1,
 });
 /* ======================================================
  * BUSINESS RULE (CRÍTICA)
  * ====================================================== */
 postSchema.pre("validate", function () {
+    if ((!this.subjectIds || this.subjectIds.length === 0) && this.subjectId) {
+        this.subjectIds = [this.subjectId];
+    }
+    if (this.subjectIds) {
+        this.subjectIds = [...new Set(this.subjectIds.map(id => id.trim()).filter(Boolean))];
+        const primarySubjectId = this.subjectIds[0];
+        if (primarySubjectId) {
+            this.subjectId = primarySubjectId;
+        }
+        else {
+            delete this.subjectId;
+        }
+    }
     if (this.contentType === "video") {
         // Remove documentos se existir
         delete this.documents;

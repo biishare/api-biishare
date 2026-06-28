@@ -10,24 +10,23 @@ const app_1 = __importDefault(require("../../models/post/app"));
  * Query params:
  * - subjectId
  * - level
- * - year
  * - contentType  ✅ (ADICIONADO)
  * - page (opcional)
  * - limit (opcional)
  */
 const getPosts = async (req, res) => {
     try {
-        const { subjectId, level, year, contentType, page = "1", limit = "20", } = req.query;
+        const { subjectId, level, contentType, page = "1", limit = "20", } = req.query;
         const filters = {};
         /* ---------- FILTROS ---------- */
         if (subjectId) {
-            filters.subjectId = subjectId;
+            filters.$or = [
+                { subjectIds: subjectId },
+                { subjectId },
+            ];
         }
         if (level) {
             filters.level = level;
-        }
-        if (year) {
-            filters.year = Number(year);
         }
         // 🔥 FIX CRÍTICO: filtro por enum
         if (contentType === "video" || contentType === "document") {

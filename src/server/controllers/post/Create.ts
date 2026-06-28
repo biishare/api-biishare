@@ -1,22 +1,38 @@
 import { Request, Response } from "express";
 import PostModel from "../../models/post/app";
+import { normalizeSubjectIds } from "./utils";
 
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
     const {
       subjectId,
+      subjectIds: rawSubjectIds,
       title,
-      year,
+      description,
       level,
       contentType,
       imageLink,
       videos,
       documents,
     } = req.body;
+    const subjectIds = normalizeSubjectIds(rawSubjectIds, subjectId);
+    const normalizedTitle = typeof title === "string" ? title.trim() : "";
+    const normalizedDescription =
+      typeof description === "string" ? description.trim() : "";
+    const normalizedLevel = typeof level === "string" ? level.trim() : "";
+    const normalizedImageLink =
+      typeof imageLink === "string" ? imageLink.trim() : "";
 
     /* ---------- VALIDAÇÕES BASE ---------- */
 
-    if (!subjectId || !title || !year || !level || !contentType || !imageLink) {
+    if (
+      subjectIds.length === 0 ||
+      !normalizedTitle ||
+      !normalizedDescription ||
+      !normalizedLevel ||
+      !contentType ||
+      !normalizedImageLink
+    ) {
       res.status(400).json({
         error: "Campos obrigatórios ausentes.",
       });
@@ -59,12 +75,13 @@ export const create = async (req: Request, res: Response): Promise<void> => {
     /* ---------- CREATE ---------- */
 
     const newPost = new PostModel({
-      subjectId,
-      title,
-      year: Number(year),
-      level,
+      subjectIds,
+      subjectId: subjectIds[0],
+      title: normalizedTitle,
+      description: normalizedDescription,
+      level: normalizedLevel,
       contentType,
-      imageLink,
+      imageLink: normalizedImageLink,
 
       ...(contentType === "video" && {
         videos,

@@ -34,7 +34,6 @@ const login = async (req, res) => {
         (0, utils_1.setAuthCookie)(res, token);
         res.status(200).json({
             message: "Sessao iniciada com sucesso!",
-            token,
             user: (0, utils_1.sanitizeUser)(userWithUsername),
         });
     }

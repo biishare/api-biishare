@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import PostModel from "../../models/post/app";
+import { normalizeSubjectIds } from "./utils";
 
 export const update = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -10,9 +11,45 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Só pega os campos permitidos do body
-    const { subjectId, title, year, level, imageLink, videos, documents } = req.body;
+    const {
+      subjectId,
+      subjectIds: rawSubjectIds,
+      title,
+      description,
+      level,
+      contentType,
+      imageLink,
+      videos,
+      documents,
+    } = req.body;
+    const subjectIds = normalizeSubjectIds(rawSubjectIds, subjectId);
 
-    const updateData: Partial<typeof req.body> = { subjectId, title, year, level, imageLink };
+    const updateData: Partial<typeof req.body> = {};
+
+    if (subjectIds.length > 0) {
+      updateData.subjectIds = subjectIds;
+      updateData.subjectId = subjectIds[0];
+    }
+
+    if (title !== undefined) {
+      updateData.title = typeof title === "string" ? title.trim() : title;
+    }
+
+    if (description !== undefined) {
+      updateData.description =
+        typeof description === "string" ? description.trim() : description;
+    }
+
+    if (level !== undefined) {
+      updateData.level = typeof level === "string" ? level.trim() : level;
+    }
+
+    if (contentType !== undefined) updateData.contentType = contentType;
+
+    if (imageLink !== undefined) {
+      updateData.imageLink =
+        typeof imageLink === "string" ? imageLink.trim() : imageLink;
+    }
 
     if (videos) {
       updateData.videos = videos;

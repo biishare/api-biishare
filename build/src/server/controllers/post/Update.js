@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.update = void 0;
 const app_1 = __importDefault(require("../../models/post/app"));
+const utils_1 = require("./utils");
 const update = async (req, res) => {
     try {
         const { postId } = req.params;
@@ -13,8 +14,29 @@ const update = async (req, res) => {
             return;
         }
         // Só pega os campos permitidos do body
-        const { subjectId, title, year, level, imageLink, videos, documents } = req.body;
-        const updateData = { subjectId, title, year, level, imageLink };
+        const { subjectId, subjectIds: rawSubjectIds, title, description, level, contentType, imageLink, videos, documents, } = req.body;
+        const subjectIds = (0, utils_1.normalizeSubjectIds)(rawSubjectIds, subjectId);
+        const updateData = {};
+        if (subjectIds.length > 0) {
+            updateData.subjectIds = subjectIds;
+            updateData.subjectId = subjectIds[0];
+        }
+        if (title !== undefined) {
+            updateData.title = typeof title === "string" ? title.trim() : title;
+        }
+        if (description !== undefined) {
+            updateData.description =
+                typeof description === "string" ? description.trim() : description;
+        }
+        if (level !== undefined) {
+            updateData.level = typeof level === "string" ? level.trim() : level;
+        }
+        if (contentType !== undefined)
+            updateData.contentType = contentType;
+        if (imageLink !== undefined) {
+            updateData.imageLink =
+                typeof imageLink === "string" ? imageLink.trim() : imageLink;
+        }
         if (videos) {
             updateData.videos = videos;
             updateData.documents = undefined; // remove documents se vídeos forem enviados

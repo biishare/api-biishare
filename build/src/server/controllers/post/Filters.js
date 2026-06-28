@@ -7,16 +7,16 @@ exports.getPostFilters = void 0;
 const app_1 = __importDefault(require("../../models/post/app"));
 const getPostFilters = async (req, res) => {
     try {
-        const [subjects, levels, years, contentTypes] = await Promise.all([
+        const [subjectIds, legacySubjectIds, levels, contentTypes] = await Promise.all([
+            app_1.default.distinct("subjectIds"),
             app_1.default.distinct("subjectId"),
             app_1.default.distinct("level"),
-            app_1.default.distinct("year"),
             app_1.default.distinct("contentType"),
         ]);
+        const subjects = [...new Set([...subjectIds, ...legacySubjectIds].filter(Boolean))];
         res.status(200).json({
             subjects,
             levels,
-            years: years.sort((a, b) => a - b),
             contentTypes,
         });
     }

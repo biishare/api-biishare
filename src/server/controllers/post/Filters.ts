@@ -7,17 +7,17 @@ export const getPostFilters = async (
   res: Response
 ) => {
   try {
-    const [subjects, levels, years, contentTypes] = await Promise.all([
+    const [subjectIds, legacySubjectIds, levels, contentTypes] = await Promise.all([
+      PostModel.distinct("subjectIds"),
       PostModel.distinct("subjectId"),
       PostModel.distinct("level"),
-      PostModel.distinct("year"),
       PostModel.distinct("contentType"),
     ]);
+    const subjects = [...new Set([...subjectIds, ...legacySubjectIds].filter(Boolean))];
 
     res.status(200).json({
       subjects,
       levels,
-      years: years.sort((a, b) => a - b),
       contentTypes,
     });
   } catch (err) {

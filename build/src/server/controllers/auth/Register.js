@@ -58,11 +58,9 @@ const register = async (req, res) => {
             email,
             passwordHash: await (0, utils_1.hashPassword)(password),
         });
-        const token = (0, utils_1.createAuthToken)(user);
-        (0, utils_1.setAuthCookie)(res, token);
+        (0, utils_1.setAuthCookie)(res, (0, utils_1.createAuthToken)(user));
         res.status(201).json({
             message: "Conta criada com sucesso!",
-            token,
             user: (0, utils_1.sanitizeUser)(user),
         });
     }
