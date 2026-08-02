@@ -63,8 +63,21 @@ const userSchema = new mongoose_1.Schema({
     },
     passwordHash: {
         type: String,
-        required: true,
         select: false,
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        default: undefined,
+        index: true,
+    },
+    facebookId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        default: undefined,
+        index: true,
     },
     avatarUrl: {
         type: String,

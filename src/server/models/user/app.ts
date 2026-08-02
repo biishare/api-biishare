@@ -4,7 +4,9 @@ export interface IUser extends Document {
   name: string;
   username: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
+  googleId?: string;
+  facebookId?: string;
   avatarUrl?: string;
   coverUrl?: string;
   createdAt: Date;
@@ -44,8 +46,23 @@ const userSchema = new Schema<IUser>(
 
     passwordHash: {
       type: String,
-      required: true,
       select: false,
+    },
+
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: undefined,
+      index: true,
+    },
+
+    facebookId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: undefined,
+      index: true,
     },
 
     avatarUrl: {

@@ -23,7 +23,7 @@ const base64UrlEncode = (value: string | Buffer) =>
 const base64UrlDecode = (value: string) =>
   Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64");
 
-const getAuthSecret = () =>
+export const getAuthSecret = () =>
   process.env.AUTH_TOKEN_SECRET ||
   process.env.DB_PASS ||
   "api-bii-development-token-secret";
@@ -175,6 +175,26 @@ export const ensureUserUsername = async (user: IUser): Promise<IUser> => {
   await UserModel.updateOne({ _id: user._id }, { $set: { username } });
 
   return user;
+};
+
+export const createUniqueUsername = async (value: string): Promise<string> => {
+  const fallbackBase = `user-${randomBytes(3).toString("hex")}`;
+  const normalizedValue = normalizeUsername(value);
+  const baseUsername = (
+    normalizedValue.length >= 3 ? normalizedValue : fallbackBase
+  )
+    .slice(0, 30)
+    .replace(/-+$/g, "");
+  let username = baseUsername;
+  let suffix = 2;
+
+  while (await UserModel.exists({ username })) {
+    const nextSuffix = `-${suffix}`;
+    username = `${baseUsername.slice(0, 30 - nextSuffix.length)}${nextSuffix}`;
+    suffix += 1;
+  }
+
+  return username;
 };
 
 export const createAuthToken = (user: IUser): string => {

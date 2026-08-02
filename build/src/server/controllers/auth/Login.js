@@ -23,7 +23,9 @@ const login = async (req, res) => {
         }
         const { email, password } = validation.data;
         const user = await app_1.default.findOne({ email }).select("+passwordHash");
-        if (!user || !(await (0, utils_1.verifyPassword)(password, user.passwordHash))) {
+        if (!user ||
+            !user.passwordHash ||
+            !(await (0, utils_1.verifyPassword)(password, user.passwordHash))) {
             res.status(401).json({
                 error: "Email ou palavra-passe invalidos.",
             });

@@ -4,6 +4,7 @@ import * as getPostById from './GetById'
 import * as getPostFilters from './Filters' 
 import * as update from './Update' 
 import * as deletePost from './Delete' 
+import * as savedPosts from './Saved'
 
 export const PostController = {
     ...create,
@@ -11,5 +12,6 @@ export const PostController = {
     ...getPostFilters,
     ...getPostById,
     ...update,
-    ...deletePost
+    ...deletePost,
+    ...savedPosts
 }

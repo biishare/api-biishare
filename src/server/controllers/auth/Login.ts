@@ -30,7 +30,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = validation.data;
     const user = await UserModel.findOne({ email }).select("+passwordHash");
 
-    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+    if (
+      !user ||
+      !user.passwordHash ||
+      !(await verifyPassword(password, user.passwordHash))
+    ) {
       res.status(401).json({
         error: "Email ou palavra-passe invalidos.",
       });

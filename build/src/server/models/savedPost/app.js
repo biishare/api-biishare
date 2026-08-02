@@ -33,20 +33,24 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PostController = void 0;
-const create = __importStar(require("./Create"));
-const getPosts = __importStar(require("./Get"));
-const getPostById = __importStar(require("./GetById"));
-const getPostFilters = __importStar(require("./Filters"));
-const update = __importStar(require("./Update"));
-const deletePost = __importStar(require("./Delete"));
-const savedPosts = __importStar(require("./Saved"));
-exports.PostController = {
-    ...create,
-    ...getPosts,
-    ...getPostFilters,
-    ...getPostById,
-    ...update,
-    ...deletePost,
-    ...savedPosts
-};
+const mongoose_1 = __importStar(require("mongoose"));
+const savedPostSchema = new mongoose_1.Schema({
+    userId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+        index: true,
+    },
+    postId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Post",
+        required: true,
+        index: true,
+    },
+}, {
+    timestamps: true,
+});
+savedPostSchema.index({ userId: 1, postId: 1 }, { unique: true });
+savedPostSchema.index({ userId: 1, createdAt: -1 });
+const SavedPostModel = mongoose_1.default.model("SavedPost", savedPostSchema);
+exports.default = SavedPostModel;

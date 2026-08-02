@@ -3,6 +3,7 @@ import * as getMe from "./GetMe";
 import * as login from "./Login";
 import * as logout from "./Logout";
 import * as register from "./Register";
+import * as socialAuth from "./SocialAuth";
 import * as uploadProfileImages from "./UploadProfileImages";
 
 export const AuthController = {
@@ -11,5 +12,6 @@ export const AuthController = {
   ...login,
   ...logout,
   ...register,
+  ...socialAuth,
   ...uploadProfileImages,
 };

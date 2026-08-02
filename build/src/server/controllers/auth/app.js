@@ -39,6 +39,7 @@ const getMe = __importStar(require("./GetMe"));
 const login = __importStar(require("./Login"));
 const logout = __importStar(require("./Logout"));
 const register = __importStar(require("./Register"));
+const socialAuth = __importStar(require("./SocialAuth"));
 const uploadProfileImages = __importStar(require("./UploadProfileImages"));
 exports.AuthController = {
     ...checkUsername,
@@ -46,5 +47,6 @@ exports.AuthController = {
     ...login,
     ...logout,
     ...register,
+    ...socialAuth,
     ...uploadProfileImages,
 };

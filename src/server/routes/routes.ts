@@ -36,6 +36,19 @@ router.get("/", (req: Request, res: Response) => {
         delete: "DELETE /posts/:id",
         filters: "GET /posts/filters",
         byId: "GET /posts/:id",
+        saved: "GET /posts/saved",
+        save: "POST /posts/:id/save",
+        unsave: "DELETE /posts/:id/save",
+        savedStatus: "GET /posts/:id/save",
+      },
+      toques: {
+        list: "GET /toques",
+        create: "POST /toques",
+        byId: "GET /toques/:id",
+        saved: "GET /toques/saved",
+        save: "POST /toques/:id/save",
+        unsave: "DELETE /toques/:id/save",
+        savedStatus: "GET /toques/:id/save",
       },
       curiosities: {
         create: "POST /curiosities",
@@ -46,6 +59,10 @@ router.get("/", (req: Request, res: Response) => {
         logout: "POST /auth/logout",
         me: "GET /auth/me",
         username: "GET /auth/username?username=:username",
+        google: "GET /auth/google",
+        googleCallback: "GET /auth/google/callback",
+        facebook: "GET /auth/facebook",
+        facebookCallback: "GET /auth/facebook/callback",
         profileImages: "POST /auth/profile-images",
       },
     },
@@ -60,6 +77,10 @@ router.post("/auth/login", AuthController.login);
 router.post("/auth/logout", AuthController.logout);
 router.get("/auth/username", AuthController.checkUsername);
 router.get("/auth/me", authenticate, AuthController.getMe);
+router.get("/auth/google", AuthController.googleAuth);
+router.get("/auth/google/callback", AuthController.googleCallback);
+router.get("/auth/facebook", AuthController.facebookAuth);
+router.get("/auth/facebook/callback", AuthController.facebookCallback);
 router.post(
   "/auth/profile-images",
   authenticate,
@@ -79,6 +100,12 @@ router.get("/posts/filters", PostController.getPostFilters);
 // 🔎 LISTAGEM + BUSCA
 router.get("/posts", PostController.getPosts);
 
+// Guardados do utilizador autenticado
+router.get("/posts/saved", authenticate, PostController.getSavedPosts);
+router.get("/posts/:id/save", authenticate, PostController.getSavedPostStatus);
+router.post("/posts/:id/save", authenticate, PostController.savePost);
+router.delete("/posts/:id/save", authenticate, PostController.deleteSavedPost);
+
 // 🔍 DETALHE
 router.get("/posts/:id", PostController.getPostById);
 
@@ -97,6 +124,10 @@ router.delete("/posts/:id", PostController.deletePost);
  * ================================ */
 router.post("/toques", ShortController.create);        // Criação
 router.get("/toques", ShortController.getShorts);      // Listagem
+router.get("/toques/saved", authenticate, ShortController.getSavedToques);
+router.get("/toques/:id/save", authenticate, ShortController.getSavedToqueStatus);
+router.post("/toques/:id/save", authenticate, ShortController.saveToque);
+router.delete("/toques/:id/save", authenticate, ShortController.deleteSavedToque);
 router.get("/toques/:id", ShortController.getToqueById); // Detalhe por ID
 // router.delete("/toques/:id", ShortController.deleteShort); // Exclusão
 

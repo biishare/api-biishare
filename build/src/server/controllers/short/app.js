@@ -38,9 +38,11 @@ const create = __importStar(require("./Create"));
 const getShorts = __importStar(require("./Get"));
 // import * as deleteShort from './Delete' 
 const getToqueById = __importStar(require("./GetById"));
+const savedToques = __importStar(require("./Saved"));
 exports.ShortController = {
     ...create,
     ...getShorts,
     //     ...deleteShort,
-    ...getToqueById
+    ...getToqueById,
+    ...savedToques
 };

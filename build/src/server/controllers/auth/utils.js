@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyAuthToken = exports.createAuthToken = exports.ensureUserUsername = exports.sanitizeUser = exports.verifyPassword = exports.hashPassword = exports.getAuthTokenFromCookieHeader = exports.clearAuthCookie = exports.setAuthCookie = exports.getAuthCookieName = void 0;
+exports.verifyAuthToken = exports.createAuthToken = exports.createUniqueUsername = exports.ensureUserUsername = exports.sanitizeUser = exports.verifyPassword = exports.hashPassword = exports.getAuthTokenFromCookieHeader = exports.clearAuthCookie = exports.setAuthCookie = exports.getAuthCookieName = exports.getAuthSecret = void 0;
 const crypto_1 = require("crypto");
 const util_1 = require("util");
 const app_1 = __importDefault(require("../../models/user/app"));
@@ -19,6 +19,7 @@ const base64UrlDecode = (value) => Buffer.from(value.replace(/-/g, "+").replace(
 const getAuthSecret = () => process.env.AUTH_TOKEN_SECRET ||
     process.env.DB_PASS ||
     "api-bii-development-token-secret";
+exports.getAuthSecret = getAuthSecret;
 const getAuthTokenExpiresInSeconds = () => Number(process.env.AUTH_TOKEN_EXPIRES_IN_SECONDS || 604800);
 const getAuthCookieSameSite = () => {
     var _a;
@@ -127,8 +128,24 @@ const ensureUserUsername = async (user) => {
     return user;
 };
 exports.ensureUserUsername = ensureUserUsername;
+const createUniqueUsername = async (value) => {
+    const fallbackBase = `user-${(0, crypto_1.randomBytes)(3).toString("hex")}`;
+    const normalizedValue = (0, username_1.normalizeUsername)(value);
+    const baseUsername = (normalizedValue.length >= 3 ? normalizedValue : fallbackBase)
+        .slice(0, 30)
+        .replace(/-+$/g, "");
+    let username = baseUsername;
+    let suffix = 2;
+    while (await app_1.default.exists({ username })) {
+        const nextSuffix = `-${suffix}`;
+        username = `${baseUsername.slice(0, 30 - nextSuffix.length)}${nextSuffix}`;
+        suffix += 1;
+    }
+    return username;
+};
+exports.createUniqueUsername = createUniqueUsername;
 const createAuthToken = (user) => {
-    const secret = getAuthSecret();
+    const secret = (0, exports.getAuthSecret)();
     const now = Math.floor(Date.now() / 1000);
     const expiresIn = getAuthTokenExpiresInSeconds();
     const header = {
@@ -158,7 +175,7 @@ const verifyAuthToken = (token) => {
         return null;
     }
     const unsignedToken = `${encodedHeader}.${encodedPayload}`;
-    const expectedSignature = (0, crypto_1.createHmac)("sha256", getAuthSecret())
+    const expectedSignature = (0, crypto_1.createHmac)("sha256", (0, exports.getAuthSecret)())
         .update(unsignedToken)
         .digest();
     const receivedSignature = base64UrlDecode(encodedSignature);
