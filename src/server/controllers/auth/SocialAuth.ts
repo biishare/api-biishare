@@ -9,6 +9,11 @@ import {
   getAuthSecret,
   setAuthCookie,
 } from "./utils";
+import {
+  getConfiguredRedirectOrigins,
+  getEnvValue,
+  isAllowedOrigin,
+} from "../../config/security";
 
 type SocialProvider = "google" | "facebook";
 
@@ -66,25 +71,6 @@ type FacebookUserInfo = {
 
 const stateMaxAgeMs = 10 * 60 * 1000;
 
-const defaultLocalOrigins = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "http://localhost:3002",
-  "http://localhost:3003",
-  "http://localhost:3004",
-  "http://localhost:3005",
-  "http://localhost:3006",
-  "http://localhost:3007",
-  "http://127.0.0.1:3000",
-  "http://127.0.0.1:3001",
-  "http://127.0.0.1:3002",
-  "http://127.0.0.1:3003",
-  "http://127.0.0.1:3004",
-  "http://127.0.0.1:3005",
-  "http://127.0.0.1:3006",
-  "http://127.0.0.1:3007",
-];
-
 const base64UrlEncode = (value: string | Buffer) =>
   Buffer.from(value)
     .toString("base64")
@@ -110,72 +96,11 @@ const getQueryStringValue = (value: unknown): string | undefined => {
   return undefined;
 };
 
-const splitCsv = (value?: string) =>
-  (value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const getEnvValue = (name: string) => {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    return undefined;
-  }
-
-  const duplicatedKeyPrefix = `${name}=`;
-
-  if (value.startsWith(duplicatedKeyPrefix)) {
-    return value.slice(duplicatedKeyPrefix.length).trim() || undefined;
-  }
-
-  return value;
-};
-
-const getOrigin = (value: string): string | undefined => {
-  try {
-    return new URL(value).origin;
-  } catch {
-    return undefined;
-  }
-};
-
-const getConfiguredRedirectOrigins = () => {
-  const origins = [
-    ...defaultLocalOrigins,
-    ...splitCsv(process.env.CORS_ORIGINS),
-    ...splitCsv(process.env.AUTH_REDIRECT_ORIGINS),
-  ];
-
-  if (process.env.AUTH_SUCCESS_REDIRECT_URL) {
-    origins.push(process.env.AUTH_SUCCESS_REDIRECT_URL);
-  }
-
-  return new Set(origins.map(getOrigin).filter(Boolean));
-};
-
-const isPrivateDevelopmentOrigin = (url: URL) => {
-  if (process.env.NODE_ENV === "production") {
-    return false;
-  }
-
-  const hostname = url.hostname.toLowerCase();
-  const isLocalhost =
-    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-  const isPrivateIPv4 =
-    /^10\./.test(hostname) ||
-    /^192\.168\./.test(hostname) ||
-    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-
-  return isLocalhost || isPrivateIPv4;
-};
-
 const isAllowedRedirectUri = (url: URL) =>
-  getConfiguredRedirectOrigins().has(url.origin) ||
-  isPrivateDevelopmentOrigin(url);
+  isAllowedOrigin(url.toString(), getConfiguredRedirectOrigins());
 
 const getDefaultClientRedirectUri = () => {
-  const configuredUrl = process.env.AUTH_SUCCESS_REDIRECT_URL;
+  const configuredUrl = getEnvValue("AUTH_SUCCESS_REDIRECT_URL");
 
   if (configuredUrl) {
     try {
@@ -220,7 +145,8 @@ const appendRedirectError = (redirectUri: string, error: string) => {
 
 const getRequestBaseUrl = (req: Request) => {
   const configuredBaseUrl =
-    process.env.AUTH_CALLBACK_BASE_URL || process.env.API_PUBLIC_BASE_URL;
+    getEnvValue("AUTH_CALLBACK_BASE_URL") ||
+    getEnvValue("API_PUBLIC_BASE_URL");
 
   if (configuredBaseUrl) {
     return configuredBaseUrl.replace(/\/+$/, "");
@@ -337,7 +263,7 @@ const createProviderAuthUrl = (
     return authUrl.toString();
   }
 
-  const facebookVersion = process.env.FACEBOOK_GRAPH_VERSION || "v20.0";
+  const facebookVersion = getEnvValue("FACEBOOK_GRAPH_VERSION") || "v20.0";
   const authUrl = new URL(
     `https://www.facebook.com/${facebookVersion}/dialog/oauth`
   );
@@ -419,7 +345,7 @@ const exchangeFacebookCode = async (
   callbackUrl: string,
   config: ResolvedOAuthConfig
 ): Promise<SocialProfile> => {
-  const facebookVersion = process.env.FACEBOOK_GRAPH_VERSION || "v20.0";
+  const facebookVersion = getEnvValue("FACEBOOK_GRAPH_VERSION") || "v20.0";
   const tokenUrl = new URL(
     `https://graph.facebook.com/${facebookVersion}/oauth/access_token`
   );

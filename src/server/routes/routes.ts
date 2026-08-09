@@ -1,12 +1,13 @@
-import { Router, Request, Response } from "express";
+﻿import { Router, Request, Response } from "express";
 import multer from "multer";
 import { PostController } from "../controllers/app";
 import { ShortController } from "../controllers/app";
 import { AuthController } from "../controllers/app";
 import { AdController } from "../controllers/ad/app";
-import { authenticate } from "../middlewares/auth";
+import { authenticate, requireCreator } from "../middlewares/auth";
+
 const router = Router();
-const upload = multer({
+const profileImageUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 2 * 1024 * 1024,
@@ -21,17 +22,39 @@ const upload = multer({
   },
 });
 
-/* ================================
- * ROOT
- * ================================ */
+const publicationMediaUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 80 * 1024 * 1024,
+  },
+  fileFilter: (_req, file, callback) => {
+    const mimetype = file.mimetype.toLowerCase();
+    const name = file.originalname.toLowerCase();
+    const isAllowed =
+      mimetype.startsWith("image/") ||
+      mimetype.startsWith("video/") ||
+      mimetype === "application/pdf" ||
+      name.endsWith(".pdf");
+
+    if (!isAllowed) {
+      callback(new Error("Apenas imagens, videos e PDFs sao permitidos."));
+      return;
+    }
+
+    callback(null, true);
+  },
+});
+
 router.get("/", (req: Request, res: Response) => {
   return res.status(200).json({
-    message: "API BII está online 🚀",
+    message: "API BII esta online",
     version: "1.0.0",
     endpoints: {
       posts: {
         list: "GET /posts",
+        mine: "GET /posts/mine",
         create: "POST /posts",
+        media: "POST /posts/media",
         update: "PUT /posts/:postId",
         delete: "DELETE /posts/:id",
         filters: "GET /posts/filters",
@@ -43,15 +66,15 @@ router.get("/", (req: Request, res: Response) => {
       },
       toques: {
         list: "GET /toques",
+        mine: "GET /toques/mine",
         create: "POST /toques",
+        update: "PUT /toques/:id",
+        delete: "DELETE /toques/:id",
         byId: "GET /toques/:id",
         saved: "GET /toques/saved",
         save: "POST /toques/:id/save",
         unsave: "DELETE /toques/:id/save",
         savedStatus: "GET /toques/:id/save",
-      },
-      curiosities: {
-        create: "POST /curiosities",
       },
       auth: {
         register: "POST /auth/register",
@@ -64,19 +87,23 @@ router.get("/", (req: Request, res: Response) => {
         facebook: "GET /auth/facebook",
         facebookCallback: "GET /auth/facebook/callback",
         profileImages: "POST /auth/profile-images",
+        creatorApplication: "POST /auth/creator-application",
       },
     },
   });
 });
 
-/* ================================
- * AUTH
- * ================================ */
 router.post("/auth/register", AuthController.register);
 router.post("/auth/login", AuthController.login);
 router.post("/auth/logout", AuthController.logout);
 router.get("/auth/username", AuthController.checkUsername);
 router.get("/auth/me", authenticate, AuthController.getMe);
+router.post(
+  "/auth/creator-application",
+  authenticate,
+  profileImageUpload.single("verificationPhoto"),
+  AuthController.applyCreatorApplication
+);
 router.get("/auth/google", AuthController.googleAuth);
 router.get("/auth/google/callback", AuthController.googleCallback);
 router.get("/auth/facebook", AuthController.facebookAuth);
@@ -84,60 +111,39 @@ router.get("/auth/facebook/callback", AuthController.facebookCallback);
 router.post(
   "/auth/profile-images",
   authenticate,
-  upload.fields([
+  profileImageUpload.fields([
     { name: "avatar", maxCount: 1 },
     { name: "cover", maxCount: 1 },
   ]),
   AuthController.uploadProfileImages
 );
 
-/* ================================
- * POSTS
- * ================================ */
-// 🎛️ FILTROS DISPONÍVEIS
+router.post("/posts/media", authenticate, requireCreator, publicationMediaUpload.single("file"), PostController.uploadPublicationMedia);
 router.get("/posts/filters", PostController.getPostFilters);
-
-// 🔎 LISTAGEM + BUSCA
+router.get("/posts/mine", authenticate, PostController.getMyPosts);
 router.get("/posts", PostController.getPosts);
-
-// Guardados do utilizador autenticado
 router.get("/posts/saved", authenticate, PostController.getSavedPosts);
 router.get("/posts/:id/save", authenticate, PostController.getSavedPostStatus);
 router.post("/posts/:id/save", authenticate, PostController.savePost);
 router.delete("/posts/:id/save", authenticate, PostController.deleteSavedPost);
-
-// 🔍 DETALHE
 router.get("/posts/:id", PostController.getPostById);
+router.post("/posts", authenticate, requireCreator, PostController.create);
+router.put("/posts/:postId", authenticate, requireCreator, PostController.update);
+router.delete("/posts/:id", authenticate, requireCreator, PostController.deletePost);
 
-// ➕ CRIAÇÃO
-router.post("/posts", PostController.create);
-
-// ➡️ ATUALIZAÇÃO
-router.put("/posts/:postId", PostController.update);
-
-// ❌ EXCLUSÃO
-router.delete("/posts/:id", PostController.deletePost);
-
-
-/* ================================
- * CURIOSITIES (SHORTS)
- * ================================ */
-router.post("/toques", ShortController.create);        // Criação
-router.get("/toques", ShortController.getShorts);      // Listagem
+router.post("/toques", authenticate, requireCreator, ShortController.create);
+router.get("/toques/mine", authenticate, ShortController.getMyToques);
+router.get("/toques", ShortController.getShorts);
 router.get("/toques/saved", authenticate, ShortController.getSavedToques);
 router.get("/toques/:id/save", authenticate, ShortController.getSavedToqueStatus);
 router.post("/toques/:id/save", authenticate, ShortController.saveToque);
 router.delete("/toques/:id/save", authenticate, ShortController.deleteSavedToque);
-router.get("/toques/:id", ShortController.getToqueById); // Detalhe por ID
-// router.delete("/toques/:id", ShortController.deleteShort); // Exclusão
+router.put("/toques/:id", authenticate, requireCreator, ShortController.update);
+router.delete("/toques/:id", authenticate, requireCreator, ShortController.deleteToque);
+router.get("/toques/:id", ShortController.getToqueById);
 
-
-/* ================================
- * Ads
- * ================================ */
-router.post("/ads", AdController.create);        // Criação
-router.get("/ads", AdController.getAds);      // Listagem
-router.get("/ads/:id", AdController.getAdById); // Detalhe por ID
-// router.delete("/ads/:id", AdController.deleteAd); // Exclusão
+router.post("/ads", AdController.create);
+router.get("/ads", AdController.getAds);
+router.get("/ads/:id", AdController.getAdById);
 
 export { router };

@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthController = void 0;
 const checkUsername = __importStar(require("./CheckUsername"));
+const creatorApplication = __importStar(require("./CreatorApplication"));
 const getMe = __importStar(require("./GetMe"));
 const login = __importStar(require("./Login"));
 const logout = __importStar(require("./Logout"));
@@ -43,6 +44,7 @@ const socialAuth = __importStar(require("./SocialAuth"));
 const uploadProfileImages = __importStar(require("./UploadProfileImages"));
 exports.AuthController = {
     ...checkUsername,
+    ...creatorApplication,
     ...getMe,
     ...login,
     ...logout,

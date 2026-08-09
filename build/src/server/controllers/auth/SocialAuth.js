@@ -7,25 +7,8 @@ exports.facebookCallback = exports.facebookAuth = exports.googleCallback = expor
 const crypto_1 = require("crypto");
 const app_1 = __importDefault(require("../../models/user/app"));
 const utils_1 = require("./utils");
+const security_1 = require("../../config/security");
 const stateMaxAgeMs = 10 * 60 * 1000;
-const defaultLocalOrigins = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
-    "http://localhost:3003",
-    "http://localhost:3004",
-    "http://localhost:3005",
-    "http://localhost:3006",
-    "http://localhost:3007",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-    "http://127.0.0.1:3002",
-    "http://127.0.0.1:3003",
-    "http://127.0.0.1:3004",
-    "http://127.0.0.1:3005",
-    "http://127.0.0.1:3006",
-    "http://127.0.0.1:3007",
-];
 const base64UrlEncode = (value) => Buffer.from(value)
     .toString("base64")
     .replace(/=/g, "")
@@ -42,56 +25,9 @@ const getQueryStringValue = (value) => {
     }
     return undefined;
 };
-const splitCsv = (value) => (value || "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-const getEnvValue = (name) => {
-    var _a;
-    const value = (_a = process.env[name]) === null || _a === void 0 ? void 0 : _a.trim();
-    if (!value) {
-        return undefined;
-    }
-    const duplicatedKeyPrefix = `${name}=`;
-    if (value.startsWith(duplicatedKeyPrefix)) {
-        return value.slice(duplicatedKeyPrefix.length).trim() || undefined;
-    }
-    return value;
-};
-const getOrigin = (value) => {
-    try {
-        return new URL(value).origin;
-    }
-    catch {
-        return undefined;
-    }
-};
-const getConfiguredRedirectOrigins = () => {
-    const origins = [
-        ...defaultLocalOrigins,
-        ...splitCsv(process.env.CORS_ORIGINS),
-        ...splitCsv(process.env.AUTH_REDIRECT_ORIGINS),
-    ];
-    if (process.env.AUTH_SUCCESS_REDIRECT_URL) {
-        origins.push(process.env.AUTH_SUCCESS_REDIRECT_URL);
-    }
-    return new Set(origins.map(getOrigin).filter(Boolean));
-};
-const isPrivateDevelopmentOrigin = (url) => {
-    if (process.env.NODE_ENV === "production") {
-        return false;
-    }
-    const hostname = url.hostname.toLowerCase();
-    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-    const isPrivateIPv4 = /^10\./.test(hostname) ||
-        /^192\.168\./.test(hostname) ||
-        /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
-    return isLocalhost || isPrivateIPv4;
-};
-const isAllowedRedirectUri = (url) => getConfiguredRedirectOrigins().has(url.origin) ||
-    isPrivateDevelopmentOrigin(url);
+const isAllowedRedirectUri = (url) => (0, security_1.isAllowedOrigin)(url.toString(), (0, security_1.getConfiguredRedirectOrigins)());
 const getDefaultClientRedirectUri = () => {
-    const configuredUrl = process.env.AUTH_SUCCESS_REDIRECT_URL;
+    const configuredUrl = (0, security_1.getEnvValue)("AUTH_SUCCESS_REDIRECT_URL");
     if (configuredUrl) {
         try {
             const url = new URL(configuredUrl);
@@ -127,7 +63,8 @@ const appendRedirectError = (redirectUri, error) => {
     return url.toString();
 };
 const getRequestBaseUrl = (req) => {
-    const configuredBaseUrl = process.env.AUTH_CALLBACK_BASE_URL || process.env.API_PUBLIC_BASE_URL;
+    const configuredBaseUrl = (0, security_1.getEnvValue)("AUTH_CALLBACK_BASE_URL") ||
+        (0, security_1.getEnvValue)("API_PUBLIC_BASE_URL");
     if (configuredBaseUrl) {
         return configuredBaseUrl.replace(/\/+$/, "");
     }
@@ -178,16 +115,16 @@ const parseState = (state) => {
 const getOAuthConfig = (provider) => {
     if (provider === "google") {
         return {
-            clientId: getEnvValue("GOOGLE_CLIENT_ID") ||
-                getEnvValue("GOOGLE_OAUTH_CLIENT_ID"),
-            clientSecret: getEnvValue("GOOGLE_CLIENT_SECRET") ||
-                getEnvValue("GOOGLE_OAUTH_CLIENT_SECRET"),
+            clientId: (0, security_1.getEnvValue)("GOOGLE_CLIENT_ID") ||
+                (0, security_1.getEnvValue)("GOOGLE_OAUTH_CLIENT_ID"),
+            clientSecret: (0, security_1.getEnvValue)("GOOGLE_CLIENT_SECRET") ||
+                (0, security_1.getEnvValue)("GOOGLE_OAUTH_CLIENT_SECRET"),
         };
     }
     return {
-        clientId: getEnvValue("FACEBOOK_APP_ID") || getEnvValue("FACEBOOK_CLIENT_ID"),
-        clientSecret: getEnvValue("FACEBOOK_APP_SECRET") ||
-            getEnvValue("FACEBOOK_CLIENT_SECRET"),
+        clientId: (0, security_1.getEnvValue)("FACEBOOK_APP_ID") || (0, security_1.getEnvValue)("FACEBOOK_CLIENT_ID"),
+        clientSecret: (0, security_1.getEnvValue)("FACEBOOK_APP_SECRET") ||
+            (0, security_1.getEnvValue)("FACEBOOK_CLIENT_SECRET"),
     };
 };
 const createProviderAuthUrl = (req, provider, config, redirectUri) => {
@@ -208,7 +145,7 @@ const createProviderAuthUrl = (req, provider, config, redirectUri) => {
         authUrl.searchParams.set("prompt", "select_account");
         return authUrl.toString();
     }
-    const facebookVersion = process.env.FACEBOOK_GRAPH_VERSION || "v20.0";
+    const facebookVersion = (0, security_1.getEnvValue)("FACEBOOK_GRAPH_VERSION") || "v20.0";
     const authUrl = new URL(`https://www.facebook.com/${facebookVersion}/dialog/oauth`);
     authUrl.searchParams.set("client_id", config.clientId);
     authUrl.searchParams.set("redirect_uri", callbackUrl);
@@ -264,7 +201,7 @@ const exchangeGoogleCode = async (code, callbackUrl, config) => {
 };
 const exchangeFacebookCode = async (code, callbackUrl, config) => {
     var _a, _b;
-    const facebookVersion = process.env.FACEBOOK_GRAPH_VERSION || "v20.0";
+    const facebookVersion = (0, security_1.getEnvValue)("FACEBOOK_GRAPH_VERSION") || "v20.0";
     const tokenUrl = new URL(`https://graph.facebook.com/${facebookVersion}/oauth/access_token`);
     tokenUrl.searchParams.set("client_id", config.clientId);
     tokenUrl.searchParams.set("client_secret", config.clientSecret);

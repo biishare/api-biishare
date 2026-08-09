@@ -41,6 +41,7 @@ const getPostFilters = __importStar(require("./Filters"));
 const update = __importStar(require("./Update"));
 const deletePost = __importStar(require("./Delete"));
 const savedPosts = __importStar(require("./Saved"));
+const uploadMedia = __importStar(require("./UploadMedia"));
 exports.PostController = {
     ...create,
     ...getPosts,
@@ -48,5 +49,6 @@ exports.PostController = {
     ...getPostById,
     ...update,
     ...deletePost,
-    ...savedPosts
+    ...savedPosts,
+    ...uploadMedia,
 };

@@ -1,33 +1,44 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Types } from "mongoose";
 
 /* ======================================================
  * MEDIA ITEM
  * ====================================================== */
 
+export type PostContentType = "video" | "document" | "image" | "playlist";
+export type MediaKind = "video" | "document" | "image";
+
 export interface IMediaItem {
+  kind?: MediaKind;
   title: string;
   url: string;
-  totalPages?: number; // 👈 novo campo (opcional para vídeos)
+  thumbnailUrl?: string;
+  totalPages?: number;
 }
-
 
 /* ======================================================
  * POST INTERFACE
  * ====================================================== */
 
 export interface IPost extends Document {
+  creatorId?: Types.ObjectId;
   subjectId?: string;
   subjectIds: string[];
   title: string;
   description: string;
   level: string;
 
-  contentType: "video" | "document";
+  contentType: PostContentType;
 
   imageLink: string;
+  playlistTitle?: string;
+  playlistOrder?: number;
 
   videos?: IMediaItem[];
   documents?: IMediaItem[];
+  images?: IMediaItem[];
+  playlist?: IMediaItem[];
+
+  isPublished: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +50,12 @@ export interface IPost extends Document {
 
 const mediaSchema = new Schema<IMediaItem>(
   {
+    kind: {
+      type: String,
+      enum: ["video", "document", "image"],
+      default: undefined,
+    },
+
     title: {
       type: String,
       required: true,
@@ -49,6 +66,13 @@ const mediaSchema = new Schema<IMediaItem>(
       type: String,
       required: true,
       trim: true,
+    },
+
+    thumbnailUrl: {
+      type: String,
+      required: false,
+      trim: true,
+      default: undefined,
     },
 
     totalPages: {
@@ -62,7 +86,6 @@ const mediaSchema = new Schema<IMediaItem>(
   }
 );
 
-
 /* ======================================================
  * MAIN SCHEMA
  * ====================================================== */
@@ -74,6 +97,13 @@ const postSchema = new Schema<IPost>(
       required: false,
       trim: true,
       default: undefined,
+    },
+
+    creatorId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: undefined,
+      index: true,
     },
 
     subjectIds: {
@@ -105,7 +135,7 @@ const postSchema = new Schema<IPost>(
 
     contentType: {
       type: String,
-      enum: ["video", "document"],
+      enum: ["video", "document", "image", "playlist"],
       required: true,
     },
 
@@ -113,6 +143,20 @@ const postSchema = new Schema<IPost>(
       type: String,
       required: true,
       trim: true,
+    },
+
+    playlistTitle: {
+      type: String,
+      required: false,
+      trim: true,
+      default: undefined,
+    },
+
+    playlistOrder: {
+      type: Number,
+      required: false,
+      min: 1,
+      default: undefined,
     },
 
     videos: {
@@ -124,6 +168,22 @@ const postSchema = new Schema<IPost>(
       type: [mediaSchema],
       default: undefined,
     },
+
+    images: {
+      type: [mediaSchema],
+      default: undefined,
+    },
+
+    playlist: {
+      type: [mediaSchema],
+      default: undefined,
+    },
+
+    isPublished: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -134,10 +194,11 @@ const postSchema = new Schema<IPost>(
  * INDICES (PERFORMANCE)
  * ====================================================== */
 
-// Feed (ordenação por data)
 postSchema.index({ createdAt: -1 });
+postSchema.index({ isPublished: 1, createdAt: -1 });
+postSchema.index({ creatorId: 1, createdAt: -1 });
+postSchema.index({ playlistTitle: 1, playlistOrder: 1 });
 
-// Filtros combinados (frontend via URL)
 postSchema.index({
   subjectIds: 1,
   level: 1,
@@ -151,7 +212,7 @@ postSchema.index({
 });
 
 /* ======================================================
- * BUSINESS RULE (CRÍTICA)
+ * BUSINESS RULE
  * ====================================================== */
 
 postSchema.pre("validate", function () {
@@ -171,23 +232,22 @@ postSchema.pre("validate", function () {
   }
 
   if (this.contentType === "video") {
-    // Remove documentos se existir
     delete this.documents;
+    delete this.images;
+    delete this.playlist;
 
     if (!this.videos || this.videos.length === 0) {
-      throw new Error(
-        "Post do tipo vídeo deve conter pelo menos um vídeo"
-      );
+      throw new Error("Post do tipo video deve conter pelo menos um video");
     }
   }
 
   if (this.contentType === "document") {
     delete this.videos;
+    delete this.images;
+    delete this.playlist;
 
     if (!this.documents || this.documents.length === 0) {
-      throw new Error(
-        "Post do tipo documento deve conter pelo menos um documento"
-      );
+      throw new Error("Post do tipo documento deve conter pelo menos um documento");
     }
 
     const invalidDoc = this.documents.find(
@@ -195,9 +255,43 @@ postSchema.pre("validate", function () {
     );
 
     if (invalidDoc) {
-      throw new Error(
-        "Todo documento deve possuir o número total de páginas"
-      );
+      throw new Error("Todo documento deve possuir o numero total de paginas");
+    }
+  }
+
+  if (this.contentType === "image") {
+    delete this.videos;
+    delete this.documents;
+    delete this.playlist;
+
+    if (!this.images || this.images.length === 0) {
+      throw new Error("Post do tipo imagem deve conter pelo menos uma imagem");
+    }
+  }
+
+  if (this.contentType === "playlist") {
+    delete this.videos;
+    delete this.documents;
+    delete this.images;
+
+    if (!this.playlist || this.playlist.length === 0) {
+      throw new Error("Playlist deve conter pelo menos um item");
+    }
+
+    const invalidItem = this.playlist.find(
+      item => item.kind !== "video" && item.kind !== "document"
+    );
+
+    if (invalidItem) {
+      throw new Error("Playlist aceita apenas videos e documentos");
+    }
+
+    const invalidDoc = this.playlist.find(
+      item => item.kind === "document" && (!item.totalPages || item.totalPages < 1)
+    );
+
+    if (invalidDoc) {
+      throw new Error("Documentos da playlist devem possuir numero total de paginas");
     }
   }
 });

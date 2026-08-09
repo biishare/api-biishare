@@ -1,5 +1,15 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export type CreatorStatus = "none" | "pending" | "approved";
+
+export type CreatorApplication = {
+  workDescription: string;
+  publicName: string;
+  verificationCode?: string;
+  verificationPhotoName?: string;
+  submittedAt: Date;
+};
+
 export interface IUser extends Document {
   name: string;
   username: string;
@@ -9,9 +19,48 @@ export interface IUser extends Document {
   facebookId?: string;
   avatarUrl?: string;
   coverUrl?: string;
+  creatorStatus: CreatorStatus;
+  creatorAppliedAt?: Date;
+  creatorApprovedAt?: Date;
+  creatorApplication?: CreatorApplication;
+  nameUpdatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const creatorApplicationSchema = new Schema<CreatorApplication>(
+  {
+    workDescription: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 500,
+    },
+    publicName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+    },
+    verificationCode: {
+      type: String,
+      default: undefined,
+      trim: true,
+      maxlength: 40,
+    },
+    verificationPhotoName: {
+      type: String,
+      default: undefined,
+      trim: true,
+      maxlength: 220,
+    },
+    submittedAt: {
+      type: Date,
+      required: true,
+    },
+  },
+  { _id: false }
+);
 
 const userSchema = new Schema<IUser>(
   {
@@ -72,6 +121,33 @@ const userSchema = new Schema<IUser>(
 
     coverUrl: {
       type: String,
+      default: undefined,
+    },
+
+    creatorStatus: {
+      type: String,
+      enum: ["none", "pending", "approved"],
+      default: "none",
+      index: true,
+    },
+
+    creatorAppliedAt: {
+      type: Date,
+      default: undefined,
+    },
+
+    creatorApprovedAt: {
+      type: Date,
+      default: undefined,
+    },
+
+    creatorApplication: {
+      type: creatorApplicationSchema,
+      default: undefined,
+    },
+
+    nameUpdatedAt: {
+      type: Date,
       default: undefined,
     },
   },

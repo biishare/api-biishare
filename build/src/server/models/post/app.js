@@ -38,6 +38,11 @@ const mongoose_1 = __importStar(require("mongoose"));
  * SUBSCHEMA: MEDIA
  * ====================================================== */
 const mediaSchema = new mongoose_1.Schema({
+    kind: {
+        type: String,
+        enum: ["video", "document", "image"],
+        default: undefined,
+    },
     title: {
         type: String,
         required: true,
@@ -47,6 +52,12 @@ const mediaSchema = new mongoose_1.Schema({
         type: String,
         required: true,
         trim: true,
+    },
+    thumbnailUrl: {
+        type: String,
+        required: false,
+        trim: true,
+        default: undefined,
     },
     totalPages: {
         type: Number,
@@ -65,6 +76,12 @@ const postSchema = new mongoose_1.Schema({
         required: false,
         trim: true,
         default: undefined,
+    },
+    creatorId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "User",
+        default: undefined,
+        index: true,
     },
     subjectIds: {
         type: [String],
@@ -91,13 +108,25 @@ const postSchema = new mongoose_1.Schema({
     },
     contentType: {
         type: String,
-        enum: ["video", "document"],
+        enum: ["video", "document", "image", "playlist"],
         required: true,
     },
     imageLink: {
         type: String,
         required: true,
         trim: true,
+    },
+    playlistTitle: {
+        type: String,
+        required: false,
+        trim: true,
+        default: undefined,
+    },
+    playlistOrder: {
+        type: Number,
+        required: false,
+        min: 1,
+        default: undefined,
     },
     videos: {
         type: [mediaSchema],
@@ -107,15 +136,29 @@ const postSchema = new mongoose_1.Schema({
         type: [mediaSchema],
         default: undefined,
     },
+    images: {
+        type: [mediaSchema],
+        default: undefined,
+    },
+    playlist: {
+        type: [mediaSchema],
+        default: undefined,
+    },
+    isPublished: {
+        type: Boolean,
+        default: true,
+        index: true,
+    },
 }, {
     timestamps: true,
 });
 /* ======================================================
  * INDICES (PERFORMANCE)
  * ====================================================== */
-// Feed (ordenação por data)
 postSchema.index({ createdAt: -1 });
-// Filtros combinados (frontend via URL)
+postSchema.index({ isPublished: 1, createdAt: -1 });
+postSchema.index({ creatorId: 1, createdAt: -1 });
+postSchema.index({ playlistTitle: 1, playlistOrder: 1 });
 postSchema.index({
     subjectIds: 1,
     level: 1,
@@ -127,7 +170,7 @@ postSchema.index({
     contentType: 1,
 });
 /* ======================================================
- * BUSINESS RULE (CRÍTICA)
+ * BUSINESS RULE
  * ====================================================== */
 postSchema.pre("validate", function () {
     if ((!this.subjectIds || this.subjectIds.length === 0) && this.subjectId) {
@@ -144,20 +187,47 @@ postSchema.pre("validate", function () {
         }
     }
     if (this.contentType === "video") {
-        // Remove documentos se existir
         delete this.documents;
+        delete this.images;
+        delete this.playlist;
         if (!this.videos || this.videos.length === 0) {
-            throw new Error("Post do tipo vídeo deve conter pelo menos um vídeo");
+            throw new Error("Post do tipo video deve conter pelo menos um video");
         }
     }
     if (this.contentType === "document") {
         delete this.videos;
+        delete this.images;
+        delete this.playlist;
         if (!this.documents || this.documents.length === 0) {
             throw new Error("Post do tipo documento deve conter pelo menos um documento");
         }
         const invalidDoc = this.documents.find(doc => !doc.totalPages || doc.totalPages < 1);
         if (invalidDoc) {
-            throw new Error("Todo documento deve possuir o número total de páginas");
+            throw new Error("Todo documento deve possuir o numero total de paginas");
+        }
+    }
+    if (this.contentType === "image") {
+        delete this.videos;
+        delete this.documents;
+        delete this.playlist;
+        if (!this.images || this.images.length === 0) {
+            throw new Error("Post do tipo imagem deve conter pelo menos uma imagem");
+        }
+    }
+    if (this.contentType === "playlist") {
+        delete this.videos;
+        delete this.documents;
+        delete this.images;
+        if (!this.playlist || this.playlist.length === 0) {
+            throw new Error("Playlist deve conter pelo menos um item");
+        }
+        const invalidItem = this.playlist.find(item => item.kind !== "video" && item.kind !== "document");
+        if (invalidItem) {
+            throw new Error("Playlist aceita apenas videos e documentos");
+        }
+        const invalidDoc = this.playlist.find(item => item.kind === "document" && (!item.totalPages || item.totalPages < 1));
+        if (invalidDoc) {
+            throw new Error("Documentos da playlist devem possuir numero total de paginas");
         }
     }
 });

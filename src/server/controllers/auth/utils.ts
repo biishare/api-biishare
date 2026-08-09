@@ -7,7 +7,9 @@ import {
 import type { CookieOptions, Response } from "express";
 import { promisify } from "util";
 
+import { isLegacyCreatorEmail } from "../../config/legacyCreator";
 import UserModel, { IUser } from "../../models/user/app";
+import { getEnvValue, isProduction } from "../../config/security";
 import { normalizeUsername } from "./username";
 
 const scrypt = promisify(scryptCallback);
@@ -24,15 +26,21 @@ const base64UrlDecode = (value: string) =>
   Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64");
 
 export const getAuthSecret = () =>
-  process.env.AUTH_TOKEN_SECRET ||
-  process.env.DB_PASS ||
-  "api-bii-development-token-secret";
+  getEnvValue("AUTH_TOKEN_SECRET") ||
+  (!isProduction() ? "api-bii-development-token-secret" : "");
 
-const getAuthTokenExpiresInSeconds = () =>
-  Number(process.env.AUTH_TOKEN_EXPIRES_IN_SECONDS || 604800);
+const getAuthTokenExpiresInSeconds = () => {
+  const expiresIn = Number(getEnvValue("AUTH_TOKEN_EXPIRES_IN_SECONDS") || 604800);
+
+  if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+    return 604800;
+  }
+
+  return expiresIn;
+};
 
 const getAuthCookieSameSite = (): CookieOptions["sameSite"] => {
-  const value = process.env.AUTH_COOKIE_SAME_SITE?.toLowerCase();
+  const value = getEnvValue("AUTH_COOKIE_SAME_SITE")?.toLowerCase();
 
   if (value === "strict" || value === "none") {
     return value;
@@ -42,11 +50,13 @@ const getAuthCookieSameSite = (): CookieOptions["sameSite"] => {
 };
 
 const getAuthCookieSecure = (sameSite: CookieOptions["sameSite"]) => {
-  if (process.env.AUTH_COOKIE_SECURE) {
-    return process.env.AUTH_COOKIE_SECURE === "true";
+  const secureValue = getEnvValue("AUTH_COOKIE_SECURE");
+
+  if (secureValue) {
+    return secureValue === "true";
   }
 
-  return process.env.NODE_ENV === "production" || sameSite === "none";
+  return isProduction() || sameSite === "none";
 };
 
 const getAuthCookieOptions = (maxAge?: number): CookieOptions => {
@@ -55,22 +65,24 @@ const getAuthCookieOptions = (maxAge?: number): CookieOptions => {
     httpOnly: true,
     path: "/",
     sameSite,
-    secure: getAuthCookieSecure(sameSite),
+    secure: getAuthCookieSecure(sameSite) || sameSite === "none",
   };
 
   if (typeof maxAge === "number") {
     options.maxAge = maxAge;
   }
 
-  if (process.env.AUTH_COOKIE_DOMAIN) {
-    options.domain = process.env.AUTH_COOKIE_DOMAIN;
+  const cookieDomain = getEnvValue("AUTH_COOKIE_DOMAIN");
+
+  if (cookieDomain) {
+    options.domain = cookieDomain;
   }
 
   return options;
 };
 
 export const getAuthCookieName = () =>
-  process.env.AUTH_COOKIE_NAME || "biishare_session";
+  getEnvValue("AUTH_COOKIE_NAME") || "biishare_session";
 
 export const setAuthCookie = (res: Response, token: string): void => {
   res.cookie(
@@ -144,16 +156,27 @@ export const verifyPassword = async (
   );
 };
 
-export const sanitizeUser = (user: IUser) => ({
-  id: user._id.toString(),
-  name: user.name,
-  username: user.username,
-  email: user.email,
-  avatarUrl: user.avatarUrl,
-  coverUrl: user.coverUrl,
-  createdAt: user.createdAt,
-  updatedAt: user.updatedAt,
-});
+export const sanitizeUser = (user: IUser) => {
+  const isLegacyCreator = isLegacyCreatorEmail(user.email);
+  const creatorStatus = isLegacyCreator ? "approved" : user.creatorStatus || "none";
+
+  return {
+    id: user._id.toString(),
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    avatarUrl: user.avatarUrl,
+    coverUrl: user.coverUrl,
+    creatorStatus,
+    isCreator: creatorStatus === "approved",
+    creatorAppliedAt: user.creatorAppliedAt,
+    creatorApprovedAt: user.creatorApprovedAt,
+    creatorApplication: user.creatorApplication,
+    nameUpdatedAt: user.nameUpdatedAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+};
 
 export const ensureUserUsername = async (user: IUser): Promise<IUser> => {
   if (user.username) {

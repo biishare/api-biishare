@@ -1,4 +1,4 @@
-import mongoose, { Schema, HydratedDocument, Model } from "mongoose";
+import mongoose, { Schema, HydratedDocument, Model, Types } from "mongoose";
 
 /* ======================================================
  * MEDIA ITEM
@@ -11,6 +11,7 @@ export interface IToqueMedia {
  * TOQUE INTERFACE
  * ====================================================== */
 export interface IToque {
+  creatorId?: Types.ObjectId;
   area: string;
   title: string;
   description: string;
@@ -49,6 +50,13 @@ const toqueMediaSchema = new Schema<IToqueMedia>(
  * ====================================================== */
 const toqueSchema = new Schema<IToque>(
   {
+    creatorId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      default: undefined,
+      index: true,
+    },
+
     area: {
       type: String,
       required: true,
@@ -102,6 +110,7 @@ const toqueSchema = new Schema<IToque>(
  * INDICES
  * ====================================================== */
 toqueSchema.index({ createdAt: -1 });
+toqueSchema.index({ creatorId: 1, createdAt: -1 });
 toqueSchema.index({ area: 1, createdAt: -1 });
 toqueSchema.index({ mediaType: 1, createdAt: -1 });
 

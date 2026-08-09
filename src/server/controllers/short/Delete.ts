@@ -1,31 +1,53 @@
-// import { Request, Response } from "express";
-// import ToqueModel from "../../models/shorts/app";
+import { Request, Response } from "express";
+import { Types } from "mongoose";
 
-// export const deleteShort = async (
-//   req: Request,
-//   res: Response
-// ): Promise<void> => {
-//   try {
-//     const { id } = req.params;
+import {
+  canManageCreatorContent,
+  getAuthenticatedContentOwner,
+} from "../creatorOwnership";
+import ToqueModel from "../../models/shorts/app";
+import { toToquePreview } from "./Saved";
 
-//     if (!id) {
-//       res.status(400).json({ error: "ID do short é obrigatório." });
-//       return;
-//     }
+export const deleteToque = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
 
-//     const deletedShort = await ToqueModel.findByIdAndDelete(id);
+    if (typeof id !== "string" || !Types.ObjectId.isValid(id)) {
+      res.status(400).json({ error: "ID do toque e obrigatorio." });
+      return;
+    }
 
-//     if (!deletedShort) {
-//       res.status(404).json({ error: "Short não encontrado." });
-//       return;
-//     }
+    const owner = await getAuthenticatedContentOwner(res);
 
-//     res.status(200).json({
-//       message: "Short apagado com sucesso!",
-//       data: deletedShort,
-//     });
-//   } catch (error: any) {
-//     console.error(error);
-//     res.status(500).json({ error: "Erro ao apagar o short." });
-//   }
-// };
+    if (!owner) {
+      res.status(401).json({ error: "Sessao obrigatoria." });
+      return;
+    }
+
+    const toque = await ToqueModel.findById(id);
+
+    if (!toque) {
+      res.status(404).json({ error: "Toque nao encontrado." });
+      return;
+    }
+
+    if (!canManageCreatorContent(toque.creatorId, owner)) {
+      res.status(403).json({ error: "Nao tens permissao para apagar este toque." });
+      return;
+    }
+
+    const data = toToquePreview(toque);
+    await toque.deleteOne();
+
+    res.status(200).json({
+      message: "Toque apagado com sucesso!",
+      data,
+    });
+  } catch (error: unknown) {
+    console.error(error);
+    res.status(500).json({ error: "Erro ao apagar o toque." });
+  }
+};

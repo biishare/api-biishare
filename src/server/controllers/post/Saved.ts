@@ -1,8 +1,9 @@
-import { Request, Response } from "express";
+﻿import { Request, Response } from "express";
 import { Types } from "mongoose";
 
 import PostModel from "../../models/post/app";
 import SavedPostModel from "../../models/savedPost/app";
+import { toPostResponse } from "./Presenter";
 
 const parsePositiveInteger = (
   value: unknown,
@@ -52,7 +53,7 @@ const stringifyId = (id: unknown): string => {
   return typeof id === "string" ? id : String(id);
 };
 
-const toSavedPostPreview = (post: unknown): unknown => {
+const oldToSavedPostPreview = (post: unknown): unknown => {
   if (!post || typeof post !== "object") {
     return post;
   }
@@ -79,7 +80,7 @@ const buildSavedPostPayload = (
 ) => ({
   id: stringifyId(savedPost._id),
   savedAt: savedPost.createdAt,
-  post: toSavedPostPreview(post),
+  post: toPostResponse(post),
 });
 
 export const getSavedPosts = async (
@@ -107,7 +108,11 @@ export const getSavedPosts = async (
         .populate({
           path: "postId",
           select:
-            "subjectId subjectIds title description level contentType imageLink videos documents createdAt updatedAt",
+            "creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt",
+          populate: {
+            path: "creatorId",
+            select: "name username avatarUrl email",
+          },
         })
         .lean(),
       SavedPostModel.countDocuments({ userId: userObjectId }),
@@ -183,8 +188,11 @@ export const savePost = async (
     const userObjectId = new Types.ObjectId(userId);
     const postObjectId = new Types.ObjectId(postId);
     const post = await PostModel.findById(postObjectId).select(
-      "subjectId subjectIds title description level contentType imageLink videos documents createdAt updatedAt"
-    );
+      "creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt"
+    ).populate({
+      path: "creatorId",
+      select: "name username avatarUrl email",
+    });
 
     if (!post) {
       res.status(404).json({ error: "Post not found" });

@@ -36,13 +36,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ShortController = void 0;
 const create = __importStar(require("./Create"));
 const getShorts = __importStar(require("./Get"));
-// import * as deleteShort from './Delete' 
+const update = __importStar(require("./Update"));
+const deleteToque = __importStar(require("./Delete"));
 const getToqueById = __importStar(require("./GetById"));
 const savedToques = __importStar(require("./Saved"));
 exports.ShortController = {
     ...create,
     ...getShorts,
-    //     ...deleteShort,
+    ...update,
+    ...deleteToque,
     ...getToqueById,
     ...savedToques
 };

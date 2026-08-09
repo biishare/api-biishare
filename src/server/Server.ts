@@ -3,68 +3,22 @@ import cors from 'cors'; // Importe o pacote cors
 import { router } from './routes/routes';
 import connectDB from './database/mongoose/app';
 import 'dotenv/config';
+import {
+  assertSecurityConfiguration,
+  getAllowedCorsOrigins,
+  isAllowedOrigin,
+} from './config/security';
+import { csrfProtection } from './middlewares/csrf';
 
 const server = express();
+assertSecurityConfiguration();
 connectDB();
 
-const defaultAllowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'http://localhost:3003',
-  'http://localhost:3004',
-  'http://localhost:3005',
-  'http://localhost:3006',
-  'http://localhost:3007',
-  'http://127.0.0.1:3000',
-  'http://127.0.0.1:3001',
-  'http://127.0.0.1:3002',
-  'http://127.0.0.1:3003',
-  'http://127.0.0.1:3004',
-  'http://127.0.0.1:3005',
-  'http://127.0.0.1:3006',
-  'http://127.0.0.1:3007',
-];
-
-const configuredAllowedOrigins = (process.env.CORS_ORIGINS || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-const allowedOrigins =
-  configuredAllowedOrigins.length > 0
-    ? configuredAllowedOrigins
-    : defaultAllowedOrigins;
-
-const isPrivateDevelopmentOrigin = (origin: string) => {
-  if (process.env.NODE_ENV === 'production') {
-    return false;
-  }
-
-  try {
-    const { hostname } = new URL(origin);
-    const normalizedHostname = hostname.toLowerCase();
-
-    return (
-      normalizedHostname === 'localhost' ||
-      normalizedHostname === '127.0.0.1' ||
-      normalizedHostname === '::1' ||
-      /^10\./.test(normalizedHostname) ||
-      /^192\.168\./.test(normalizedHostname) ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(normalizedHostname)
-    );
-  } catch {
-    return false;
-  }
-};
+const allowedOrigins = getAllowedCorsOrigins();
 
 server.use(cors({
   origin(origin, callback) {
-    if (
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      isPrivateDevelopmentOrigin(origin)
-    ) {
+    if (!origin || allowedOrigins.includes(origin) || isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
@@ -73,11 +27,11 @@ server.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Biishare-Client'],
 }));
 
-
 server.use(express.json());
+server.use(csrfProtection);
 server.use(router);
 
 export { server };

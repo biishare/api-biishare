@@ -7,6 +7,7 @@ exports.deleteSavedPost = exports.savePost = exports.getSavedPostStatus = export
 const mongoose_1 = require("mongoose");
 const app_1 = __importDefault(require("../../models/post/app"));
 const app_2 = __importDefault(require("../../models/savedPost/app"));
+const Presenter_1 = require("./Presenter");
 const parsePositiveInteger = (value, fallback, max) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -35,7 +36,7 @@ const stringifyId = (id) => {
     }
     return typeof id === "string" ? id : String(id);
 };
-const toSavedPostPreview = (post) => {
+const oldToSavedPostPreview = (post) => {
     if (!post || typeof post !== "object") {
         return post;
     }
@@ -52,7 +53,7 @@ const toSavedPostPreview = (post) => {
 const buildSavedPostPayload = (savedPost, post) => ({
     id: stringifyId(savedPost._id),
     savedAt: savedPost.createdAt,
-    post: toSavedPostPreview(post),
+    post: (0, Presenter_1.toPostResponse)(post),
 });
 const getSavedPosts = async (req, res) => {
     try {
@@ -72,7 +73,11 @@ const getSavedPosts = async (req, res) => {
                 .limit(limitNumber)
                 .populate({
                 path: "postId",
-                select: "subjectId subjectIds title description level contentType imageLink videos documents createdAt updatedAt",
+                select: "creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt",
+                populate: {
+                    path: "creatorId",
+                    select: "name username avatarUrl email",
+                },
             })
                 .lean(),
             app_2.default.countDocuments({ userId: userObjectId }),
@@ -132,7 +137,10 @@ const savePost = async (req, res) => {
         }
         const userObjectId = new mongoose_1.Types.ObjectId(userId);
         const postObjectId = new mongoose_1.Types.ObjectId(postId);
-        const post = await app_1.default.findById(postObjectId).select("subjectId subjectIds title description level contentType imageLink videos documents createdAt updatedAt");
+        const post = await app_1.default.findById(postObjectId).select("creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt").populate({
+            path: "creatorId",
+            select: "name username avatarUrl email",
+        });
         if (!post) {
             res.status(404).json({ error: "Post not found" });
             return;

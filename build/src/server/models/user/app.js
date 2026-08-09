@@ -34,6 +34,36 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const creatorApplicationSchema = new mongoose_1.Schema({
+    workDescription: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 500,
+    },
+    publicName: {
+        type: String,
+        required: true,
+        trim: true,
+        maxlength: 100,
+    },
+    verificationCode: {
+        type: String,
+        default: undefined,
+        trim: true,
+        maxlength: 40,
+    },
+    verificationPhotoName: {
+        type: String,
+        default: undefined,
+        trim: true,
+        maxlength: 220,
+    },
+    submittedAt: {
+        type: Date,
+        required: true,
+    },
+}, { _id: false });
 const userSchema = new mongoose_1.Schema({
     name: {
         type: String,
@@ -85,6 +115,28 @@ const userSchema = new mongoose_1.Schema({
     },
     coverUrl: {
         type: String,
+        default: undefined,
+    },
+    creatorStatus: {
+        type: String,
+        enum: ["none", "pending", "approved"],
+        default: "none",
+        index: true,
+    },
+    creatorAppliedAt: {
+        type: Date,
+        default: undefined,
+    },
+    creatorApprovedAt: {
+        type: Date,
+        default: undefined,
+    },
+    creatorApplication: {
+        type: creatorApplicationSchema,
+        default: undefined,
+    },
+    nameUpdatedAt: {
+        type: Date,
         default: undefined,
     },
 }, {

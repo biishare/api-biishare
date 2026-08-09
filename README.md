@@ -139,3 +139,12 @@ POST   /ads
 ## 📄 Licença
 
 ISC
+
+
+## Sessao em producao
+
+A API emite o cookie HTTP-only biishare_session e valida /auth/me pelo cookie ou por Authorization Bearer.
+
+Em producao, configure obrigatoriamente NODE_ENV=production, AUTH_TOKEN_SECRET forte e estavel, CORS_ORIGINS com a origem HTTPS do frontend, AUTH_REDIRECT_ORIGINS com a origem HTTPS do frontend, AUTH_CALLBACK_BASE_URL/API_PUBLIC_BASE_URL com a URL publica da API e AUTH_COOKIE_SECURE=true.
+
+Para frontend e API em subdominios do mesmo dominio, use AUTH_COOKIE_DOMAIN=.example.com e AUTH_COOKIE_SAME_SITE=lax. Para sites diferentes, use AUTH_COOKIE_SAME_SITE=none e AUTH_COOKIE_SECURE=true apenas se essa separacao for inevitavel.

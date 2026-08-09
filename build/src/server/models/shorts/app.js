@@ -49,6 +49,12 @@ const toqueMediaSchema = new mongoose_1.Schema({
  * MAIN SCHEMA
  * ====================================================== */
 const toqueSchema = new mongoose_1.Schema({
+    creatorId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "User",
+        default: undefined,
+        index: true,
+    },
     area: {
         type: String,
         required: true,
@@ -93,6 +99,7 @@ const toqueSchema = new mongoose_1.Schema({
  * INDICES
  * ====================================================== */
 toqueSchema.index({ createdAt: -1 });
+toqueSchema.index({ creatorId: 1, createdAt: -1 });
 toqueSchema.index({ area: 1, createdAt: -1 });
 toqueSchema.index({ mediaType: 1, createdAt: -1 });
 /* ======================================================

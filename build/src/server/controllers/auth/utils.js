@@ -6,7 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyAuthToken = exports.createAuthToken = exports.createUniqueUsername = exports.ensureUserUsername = exports.sanitizeUser = exports.verifyPassword = exports.hashPassword = exports.getAuthTokenFromCookieHeader = exports.clearAuthCookie = exports.setAuthCookie = exports.getAuthCookieName = exports.getAuthSecret = void 0;
 const crypto_1 = require("crypto");
 const util_1 = require("util");
+const legacyCreator_1 = require("../../config/legacyCreator");
 const app_1 = __importDefault(require("../../models/user/app"));
+const security_1 = require("../../config/security");
 const username_1 = require("./username");
 const scrypt = (0, util_1.promisify)(crypto_1.scrypt);
 const passwordKeyLength = 64;
@@ -16,24 +18,30 @@ const base64UrlEncode = (value) => Buffer.from(value)
     .replace(/\+/g, "-")
     .replace(/\//g, "_");
 const base64UrlDecode = (value) => Buffer.from(value.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-const getAuthSecret = () => process.env.AUTH_TOKEN_SECRET ||
-    process.env.DB_PASS ||
-    "api-bii-development-token-secret";
+const getAuthSecret = () => (0, security_1.getEnvValue)("AUTH_TOKEN_SECRET") ||
+    (!(0, security_1.isProduction)() ? "api-bii-development-token-secret" : "");
 exports.getAuthSecret = getAuthSecret;
-const getAuthTokenExpiresInSeconds = () => Number(process.env.AUTH_TOKEN_EXPIRES_IN_SECONDS || 604800);
+const getAuthTokenExpiresInSeconds = () => {
+    const expiresIn = Number((0, security_1.getEnvValue)("AUTH_TOKEN_EXPIRES_IN_SECONDS") || 604800);
+    if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+        return 604800;
+    }
+    return expiresIn;
+};
 const getAuthCookieSameSite = () => {
     var _a;
-    const value = (_a = process.env.AUTH_COOKIE_SAME_SITE) === null || _a === void 0 ? void 0 : _a.toLowerCase();
+    const value = (_a = (0, security_1.getEnvValue)("AUTH_COOKIE_SAME_SITE")) === null || _a === void 0 ? void 0 : _a.toLowerCase();
     if (value === "strict" || value === "none") {
         return value;
     }
     return "lax";
 };
 const getAuthCookieSecure = (sameSite) => {
-    if (process.env.AUTH_COOKIE_SECURE) {
-        return process.env.AUTH_COOKIE_SECURE === "true";
+    const secureValue = (0, security_1.getEnvValue)("AUTH_COOKIE_SECURE");
+    if (secureValue) {
+        return secureValue === "true";
     }
-    return process.env.NODE_ENV === "production" || sameSite === "none";
+    return (0, security_1.isProduction)() || sameSite === "none";
 };
 const getAuthCookieOptions = (maxAge) => {
     const sameSite = getAuthCookieSameSite();
@@ -41,17 +49,18 @@ const getAuthCookieOptions = (maxAge) => {
         httpOnly: true,
         path: "/",
         sameSite,
-        secure: getAuthCookieSecure(sameSite),
+        secure: getAuthCookieSecure(sameSite) || sameSite === "none",
     };
     if (typeof maxAge === "number") {
         options.maxAge = maxAge;
     }
-    if (process.env.AUTH_COOKIE_DOMAIN) {
-        options.domain = process.env.AUTH_COOKIE_DOMAIN;
+    const cookieDomain = (0, security_1.getEnvValue)("AUTH_COOKIE_DOMAIN");
+    if (cookieDomain) {
+        options.domain = cookieDomain;
     }
     return options;
 };
-const getAuthCookieName = () => process.env.AUTH_COOKIE_NAME || "biishare_session";
+const getAuthCookieName = () => (0, security_1.getEnvValue)("AUTH_COOKIE_NAME") || "biishare_session";
 exports.getAuthCookieName = getAuthCookieName;
 const setAuthCookie = (res, token) => {
     res.cookie((0, exports.getAuthCookieName)(), token, getAuthCookieOptions(getAuthTokenExpiresInSeconds() * 1000));
@@ -99,16 +108,26 @@ const verifyPassword = async (password, storedHash) => {
         (0, crypto_1.timingSafeEqual)(storedKey, derivedKey));
 };
 exports.verifyPassword = verifyPassword;
-const sanitizeUser = (user) => ({
-    id: user._id.toString(),
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    avatarUrl: user.avatarUrl,
-    coverUrl: user.coverUrl,
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt,
-});
+const sanitizeUser = (user) => {
+    const isLegacyCreator = (0, legacyCreator_1.isLegacyCreatorEmail)(user.email);
+    const creatorStatus = isLegacyCreator ? "approved" : user.creatorStatus || "none";
+    return {
+        id: user._id.toString(),
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        avatarUrl: user.avatarUrl,
+        coverUrl: user.coverUrl,
+        creatorStatus,
+        isCreator: creatorStatus === "approved",
+        creatorAppliedAt: user.creatorAppliedAt,
+        creatorApprovedAt: user.creatorApprovedAt,
+        creatorApplication: user.creatorApplication,
+        nameUpdatedAt: user.nameUpdatedAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+    };
+};
 exports.sanitizeUser = sanitizeUser;
 const ensureUserUsername = async (user) => {
     if (user.username) {
