@@ -5,7 +5,7 @@ import SavedToqueModel from "../../models/savedToque/app";
 import ToqueModel from "../../models/shorts/app";
 
 const TOQUE_PREVIEW_SELECT =
-  "area title description mediaType video image isPublished createdAt updatedAt";
+  "area title description mediaType video image images isPublished createdAt updatedAt";
 
 const parsePositiveInteger = (
   value: unknown,
@@ -65,6 +65,17 @@ const asOptionalString = (value: unknown): string | undefined =>
 const asRequiredString = (value: unknown): string =>
   typeof value === "string" ? value : "";
 
+const getToqueImageUrls = (plainToque: Record<string, unknown>): string[] => {
+  const images = Array.isArray(plainToque.images) ? plainToque.images : [];
+  const image = plainToque.image as MediaPreviewSource | undefined;
+  const urls = [
+    ...images.map((item) => asOptionalString((item as MediaPreviewSource)?.url)),
+    asOptionalString(image?.url),
+  ];
+
+  return Array.from(new Set(urls.filter((url): url is string => Boolean(url))));
+};
+
 export const toToquePreview = (toque: unknown): unknown => {
   if (!toque || typeof toque !== "object") {
     return toque;
@@ -80,7 +91,7 @@ export const toToquePreview = (toque: unknown): unknown => {
 
   const mediaType = plainToque.mediaType === "image" ? "image" : "video";
   const video = plainToque.video as MediaPreviewSource | undefined;
-  const image = plainToque.image as MediaPreviewSource | undefined;
+  const imageUrls = mediaType === "image" ? getToqueImageUrls(plainToque) : [];
 
   return {
     _id: stringifyId(plainToque._id),
@@ -89,7 +100,9 @@ export const toToquePreview = (toque: unknown): unknown => {
     description: asRequiredString(plainToque.description),
     mediaType,
     videoUrl: mediaType === "video" ? asOptionalString(video?.url) : undefined,
-    imageUrl: mediaType === "image" ? asOptionalString(image?.url) : undefined,
+    imageUrl: mediaType === "image" ? imageUrls[0] : undefined,
+    imageUrls: mediaType === "image" ? imageUrls : undefined,
+    images: mediaType === "image" ? imageUrls.map((url) => ({ url })) : undefined,
     isPublished: Boolean(plainToque.isPublished),
     createdAt: plainToque.createdAt,
     updatedAt: plainToque.updatedAt,

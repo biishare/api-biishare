@@ -20,13 +20,13 @@ export interface IToque {
 
   video?: IToqueMedia | undefined;
   image?: IToqueMedia | undefined;
+  images?: IToqueMedia[] | undefined;
 
   isPublished: boolean;
 
   createdAt: Date;
   updatedAt: Date;
 }
-
 
 export type ToqueDocument = HydratedDocument<IToque>;
 
@@ -98,6 +98,11 @@ const toqueSchema = new Schema<IToque>(
       default: undefined,
     },
 
+    images: {
+      type: [toqueMediaSchema],
+      default: undefined,
+    },
+
     isPublished: {
       type: Boolean,
       default: true,
@@ -120,11 +125,12 @@ toqueSchema.index({ mediaType: 1, createdAt: -1 });
 toqueSchema.pre("validate", function () {
   if (this.mediaType === "video") {
     this.image = undefined;
+    this.images = undefined;
 
     if (!this.video?.url) {
       this.invalidate(
         "video",
-        "Toque do tipo vídeo precisa de uma URL válida"
+        "Toque do tipo video precisa de uma URL valida"
       );
     }
   }
@@ -132,10 +138,19 @@ toqueSchema.pre("validate", function () {
   if (this.mediaType === "image") {
     this.video = undefined;
 
-    if (!this.image?.url) {
+    const imageItems = (this.images ?? []).filter((item) => item?.url);
+
+    if (imageItems.length === 0 && this.image?.url) {
+      imageItems.push({ url: this.image.url });
+    }
+
+    this.images = imageItems;
+    this.image = imageItems[0];
+
+    if (imageItems.length === 0) {
       this.invalidate(
-        "image",
-        "Toque do tipo imagem precisa de uma URL válida"
+        "images",
+        "Toque do tipo imagem precisa de pelo menos uma URL valida"
       );
     }
   }
@@ -149,4 +164,3 @@ const ToqueModel: Model<IToque> =
   mongoose.model<IToque>("Toque", toqueSchema);
 
 export default ToqueModel;
-

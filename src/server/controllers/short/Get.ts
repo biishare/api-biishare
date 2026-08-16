@@ -21,19 +21,49 @@ const parsePositiveInteger = (
   return max ? Math.min(normalized, max) : normalized;
 };
 
-const toToqueResponse = (toque: any) => ({
-  _id: toque._id,
-  creatorId: toque.creatorId,
-  area: toque.area,
-  title: toque.title,
-  description: toque.description,
-  mediaType: toque.mediaType,
-  videoUrl: toque.video?.url,
-  imageUrl: toque.image?.url,
-  isPublished: toque.isPublished,
-  createdAt: toque.createdAt,
-  updatedAt: toque.updatedAt,
-});
+type MediaPreviewSource = {
+  url?: unknown;
+};
+
+const asOptionalString = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+
+const getToqueImageUrls = (toque: any): string[] => {
+  const images = Array.isArray(toque.images) ? toque.images : [];
+  const urls: string[] = images
+    .map((item: MediaPreviewSource) => asOptionalString(item?.url))
+    .filter((url: string | undefined): url is string => Boolean(url));
+  const legacyUrl = asOptionalString(toque.image?.url);
+
+  return Array.from(
+    new Set(
+      [...urls, legacyUrl].filter(
+        (url: string | undefined): url is string => Boolean(url)
+      )
+    )
+  );
+};
+
+const toToqueResponse = (toque: any) => {
+  const mediaType = toque.mediaType === "image" ? "image" : "video";
+  const imageUrls = mediaType === "image" ? getToqueImageUrls(toque) : [];
+
+  return {
+    _id: toque._id,
+    creatorId: toque.creatorId,
+    area: toque.area,
+    title: toque.title,
+    description: toque.description,
+    mediaType,
+    videoUrl: mediaType === "video" ? toque.video?.url : undefined,
+    imageUrl: mediaType === "image" ? imageUrls[0] : undefined,
+    imageUrls: mediaType === "image" ? imageUrls : undefined,
+    images: mediaType === "image" ? imageUrls.map((url) => ({ url })) : undefined,
+    isPublished: toque.isPublished,
+    createdAt: toque.createdAt,
+    updatedAt: toque.updatedAt,
+  };
+};
 
 const sendToquePage = async (
   req: Request,

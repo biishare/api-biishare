@@ -1,6 +1,30 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
 import ToqueModel from "../../models/shorts/app";
+import { toToquePreview } from "./Saved";
+
+type ImagePayloadItem = {
+  url?: unknown;
+};
+
+const asOptionalString = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+
+const getImageUrlsFromBody = (body: Record<string, unknown>): string[] => {
+  const images = Array.isArray(body.images) ? body.images : [];
+  const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+  const urls = [
+    ...images.map((item) =>
+      typeof item === "string"
+        ? asOptionalString(item)
+        : asOptionalString((item as ImagePayloadItem)?.url)
+    ),
+    ...imageUrls.map(asOptionalString),
+    asOptionalString(body.imageUrl),
+  ];
+
+  return Array.from(new Set(urls.filter((url): url is string => Boolean(url))));
+};
 
 /* ======================================================
  * CREATE TOQUE (SHORT)
@@ -32,8 +56,8 @@ export const create = async (
       return;
     }
 
-    if (mediaType !== "video") {
-      res.status(400).json({ error: "Toques aceitam apenas videos." });
+    if (mediaType !== "video" && mediaType !== "image") {
+      res.status(400).json({ error: "Toques aceitam video ou imagem." });
       return;
     }
 
@@ -47,8 +71,15 @@ export const create = async (
       return;
     }
 
-    if (!videoUrl || typeof videoUrl !== "string") {
+    if (mediaType === "video" && (!videoUrl || typeof videoUrl !== "string")) {
       res.status(400).json({ error: "Toque precisa de um link de video." });
+      return;
+    }
+
+    const imageUrls = mediaType === "image" ? getImageUrlsFromBody(req.body) : [];
+
+    if (mediaType === "image" && imageUrls.length === 0) {
+      res.status(400).json({ error: "Toque precisa de pelo menos uma imagem." });
       return;
     }
 
@@ -57,9 +88,10 @@ export const create = async (
       area: area.toLowerCase().trim(),
       title: title.trim(),
       description: description.trim(),
-      mediaType: "video",
-      video: { url: videoUrl.trim() },
-      image: undefined,
+      mediaType,
+      video: mediaType === "video" ? { url: videoUrl.trim() } : undefined,
+      image: mediaType === "image" ? { url: imageUrls[0] } : undefined,
+      images: mediaType === "image" ? imageUrls.map((url) => ({ url })) : undefined,
       isPublished: isPublished !== false,
     });
 
@@ -67,7 +99,7 @@ export const create = async (
 
     res.status(201).json({
       message: "Toque criado com sucesso!",
-      data: newToque,
+      data: toToquePreview(newToque),
     });
   } catch (error: any) {
     console.error(error);

@@ -8,6 +8,36 @@ import {
 import ToqueModel from "../../models/shorts/app";
 import { toToquePreview } from "./Saved";
 
+type ImagePayloadItem = {
+  url?: unknown;
+};
+
+const asOptionalString = (value: unknown): string | undefined =>
+  typeof value === "string" && value.trim() ? value.trim() : undefined;
+
+const hasImagePayload = (body: Record<string, unknown>): boolean =>
+  body.imageUrl !== undefined || body.imageUrls !== undefined || body.images !== undefined;
+
+const getImageUrlsFromBody = (body: Record<string, unknown>, fallback: string[]): string[] => {
+  if (!hasImagePayload(body)) {
+    return fallback;
+  }
+
+  const images = Array.isArray(body.images) ? body.images : [];
+  const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+  const urls = [
+    ...images.map((item) =>
+      typeof item === "string"
+        ? asOptionalString(item)
+        : asOptionalString((item as ImagePayloadItem)?.url)
+    ),
+    ...imageUrls.map(asOptionalString),
+    asOptionalString(body.imageUrl),
+  ];
+
+  return Array.from(new Set(urls.filter((url): url is string => Boolean(url))));
+};
+
 export const update = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -37,9 +67,10 @@ export const update = async (req: Request, res: Response): Promise<void> => {
     }
 
     const { area, title, description, mediaType, videoUrl, isPublished } = req.body;
+    const nextMediaType = mediaType ?? toque.mediaType;
 
-    if (mediaType !== undefined && mediaType !== "video") {
-      res.status(400).json({ error: "Toques aceitam apenas videos." });
+    if (nextMediaType !== "video" && nextMediaType !== "image") {
+      res.status(400).json({ error: "Toques aceitam video ou imagem." });
       return;
     }
 
@@ -56,11 +87,21 @@ export const update = async (req: Request, res: Response): Promise<void> => {
         typeof description === "string" ? description.trim() : description;
     }
 
+    const fallbackImageUrls = [
+      ...(toque.images ?? []).map((item) => item.url),
+      toque.image?.url,
+    ].filter((url): url is string => Boolean(url));
     const nextVideoUrl =
       typeof videoUrl === "string" ? videoUrl.trim() : toque.video?.url;
+    const nextImageUrls = getImageUrlsFromBody(req.body, fallbackImageUrls);
 
-    if (!nextVideoUrl) {
+    if (nextMediaType === "video" && !nextVideoUrl) {
       res.status(400).json({ error: "Toque precisa de um link de video." });
+      return;
+    }
+
+    if (nextMediaType === "image" && nextImageUrls.length === 0) {
+      res.status(400).json({ error: "Toque precisa de pelo menos uma imagem." });
       return;
     }
 
@@ -68,9 +109,10 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       toque.isPublished = isPublished;
     }
 
-    toque.mediaType = "video";
-    toque.video = { url: nextVideoUrl };
-    toque.image = undefined;
+    toque.mediaType = nextMediaType;
+    toque.video = nextMediaType === "video" ? { url: nextVideoUrl as string } : undefined;
+    toque.image = nextMediaType === "image" ? { url: nextImageUrls[0] as string } : undefined;
+    toque.images = nextMediaType === "image" ? nextImageUrls.map((url) => ({ url })) : undefined;
 
     await toque.save();
 
