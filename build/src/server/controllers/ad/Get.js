@@ -72,7 +72,7 @@ const getAds = async (req, res) => {
     catch (error) {
         console.error("Erro ao buscar ads:", error);
         res.status(500).json({
-            error: (error === null || error === void 0 ? void 0 : error.message) ||
+            error: (error instanceof Error ? error.message : undefined) ||
                 "Failed to fetch ads",
         });
     }

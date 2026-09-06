@@ -79,9 +79,10 @@ export const register = async (
       message: "Conta criada com sucesso!",
       user: sanitizeUser(user),
     });
-  } catch (error: any) {
-    if (error?.code === 11000) {
-      const duplicatedField = Object.keys(error.keyPattern || {})[0];
+  } catch (error: unknown) {
+    const mongoError = error as { code?: number; keyPattern?: Record<string, unknown> };
+    if (mongoError.code === 11000) {
+      const duplicatedField = Object.keys(mongoError.keyPattern || {})[0];
 
       res.status(409).json({
         error:

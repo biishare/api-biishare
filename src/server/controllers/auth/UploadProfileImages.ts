@@ -54,10 +54,10 @@ export const uploadProfileImages = async (
       message: "Imagens do perfil atualizadas com sucesso!",
       user: sanitizeUser(user),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
     res.status(500).json({
-      error: error?.message || "Erro ao atualizar imagens do perfil.",
+      error: (error instanceof Error ? error.message : undefined) || "Erro ao atualizar imagens do perfil.",
     });
   }
 };

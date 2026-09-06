@@ -40,11 +40,15 @@ const update = __importStar(require("./Update"));
 const deleteToque = __importStar(require("./Delete"));
 const getToqueById = __importStar(require("./GetById"));
 const savedToques = __importStar(require("./Saved"));
+const social = __importStar(require("./Social"));
+const context = __importStar(require("./Context"));
 exports.ShortController = {
     ...create,
     ...getShorts,
     ...update,
     ...deleteToque,
     ...getToqueById,
-    ...savedToques
+    ...savedToques,
+    ...social,
+    ...context
 };

@@ -1,4 +1,4 @@
-﻿import { Request, Response } from "express";
+import { Request, Response } from "express";
 import { Types } from "mongoose";
 
 import { uploadPublicationMediaToCloudinary } from "../../services/cloudinary";
@@ -24,8 +24,10 @@ export const uploadPublicationMedia = async (
     const data = await uploadPublicationMediaToCloudinary({ file, userId });
 
     res.status(201).json({ data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
-    res.status(400).json({ error: error?.message || "Nao foi possivel carregar o ficheiro." });
+    res.status(400).json({
+      error: (error instanceof Error ? error.message : undefined) || "Nao foi possivel carregar o ficheiro.",
+    });
   }
 };

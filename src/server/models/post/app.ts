@@ -1,11 +1,18 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
+import {
+  DEFAULT_CONTENT_LOCALE,
+  SUPPORTED_CONTENT_LOCALES,
+  ContentLocale,
+} from "../../i18n/locales";
+
 /* ======================================================
  * MEDIA ITEM
  * ====================================================== */
 
 export type PostContentType = "video" | "document" | "image" | "playlist";
 export type MediaKind = "video" | "document" | "image";
+export type TranslationStatus = "machine" | "reviewed" | "stale";
 
 export interface IMediaItem {
   kind?: MediaKind;
@@ -13,6 +20,25 @@ export interface IMediaItem {
   url: string;
   thumbnailUrl?: string;
   totalPages?: number;
+}
+
+export interface ITranslatedMediaItem {
+  title?: string;
+}
+
+export interface IPostTranslation {
+  locale: ContentLocale;
+  sourceVersion: number;
+  status: TranslationStatus;
+  provider?: string;
+  title?: string;
+  description?: string;
+  playlistTitle?: string;
+  videos?: ITranslatedMediaItem[];
+  documents?: ITranslatedMediaItem[];
+  images?: ITranslatedMediaItem[];
+  playlist?: ITranslatedMediaItem[];
+  updatedAt?: Date;
 }
 
 /* ======================================================
@@ -37,6 +63,10 @@ export interface IPost extends Document {
   documents?: IMediaItem[];
   images?: IMediaItem[];
   playlist?: IMediaItem[];
+
+  originalLocale: ContentLocale;
+  sourceVersion: number;
+  translations?: Map<ContentLocale, IPostTranslation>;
 
   isPublished: boolean;
 
@@ -78,6 +108,83 @@ const mediaSchema = new Schema<IMediaItem>(
     totalPages: {
       type: Number,
       min: 1,
+      default: undefined,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+const translatedMediaSchema = new Schema<ITranslatedMediaItem>(
+  {
+    title: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
+const postTranslationSchema = new Schema<IPostTranslation>(
+  {
+    locale: {
+      type: String,
+      enum: SUPPORTED_CONTENT_LOCALES,
+      required: true,
+    },
+    sourceVersion: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    status: {
+      type: String,
+      enum: ["machine", "reviewed", "stale"],
+      required: true,
+      default: "machine",
+    },
+    provider: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
+    title: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
+    description: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
+    playlistTitle: {
+      type: String,
+      trim: true,
+      default: undefined,
+    },
+    videos: {
+      type: [translatedMediaSchema],
+      default: undefined,
+    },
+    documents: {
+      type: [translatedMediaSchema],
+      default: undefined,
+    },
+    images: {
+      type: [translatedMediaSchema],
+      default: undefined,
+    },
+    playlist: {
+      type: [translatedMediaSchema],
+      default: undefined,
+    },
+    updatedAt: {
+      type: Date,
       default: undefined,
     },
   },
@@ -179,6 +286,25 @@ const postSchema = new Schema<IPost>(
       default: undefined,
     },
 
+    originalLocale: {
+      type: String,
+      enum: SUPPORTED_CONTENT_LOCALES,
+      default: DEFAULT_CONTENT_LOCALE,
+      index: true,
+    },
+
+    sourceVersion: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+
+    translations: {
+      type: Map,
+      of: postTranslationSchema,
+      default: undefined,
+    },
+
     isPublished: {
       type: Boolean,
       default: true,
@@ -197,6 +323,7 @@ const postSchema = new Schema<IPost>(
 postSchema.index({ createdAt: -1 });
 postSchema.index({ isPublished: 1, createdAt: -1 });
 postSchema.index({ creatorId: 1, createdAt: -1 });
+postSchema.index({ originalLocale: 1, createdAt: -1 });
 postSchema.index({ playlistTitle: 1, playlistOrder: 1 });
 
 postSchema.index({
@@ -218,6 +345,14 @@ postSchema.index({
 postSchema.pre("validate", function () {
   if ((!this.subjectIds || this.subjectIds.length === 0) && this.subjectId) {
     this.subjectIds = [this.subjectId];
+  }
+
+  if (!this.originalLocale) {
+    this.originalLocale = DEFAULT_CONTENT_LOCALE;
+  }
+
+  if (!this.sourceVersion || this.sourceVersion < 1) {
+    this.sourceVersion = 1;
   }
 
   if (this.subjectIds) {

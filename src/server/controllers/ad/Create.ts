@@ -91,7 +91,7 @@ export const create = async (
 
     /* ---------- PAYLOAD ---------- */
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       title: cleanTitle,
       subtitle: cleanSubtitle,
       cta: cleanCta,
@@ -138,12 +138,12 @@ export const create = async (
 
       data: newAd,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
 
     res.status(500).json({
       error:
-        error?.message ||
+        (error instanceof Error ? error.message : undefined) ||
         "Erro ao criar anúncio.",
     });
   }

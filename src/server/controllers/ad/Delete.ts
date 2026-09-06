@@ -35,11 +35,11 @@ export const deleteAd = async (req: Request, res: Response): Promise<void> => {
       data: deletedAd,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
 
     res.status(500).json({
-      error: error?.message || "Erro ao apagar anúncio.",
+      error: (error instanceof Error ? error.message : undefined) || "Erro ao apagar anúncio.",
     });
   }
 };

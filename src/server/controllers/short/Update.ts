@@ -111,7 +111,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
 
     toque.mediaType = nextMediaType;
     toque.video = nextMediaType === "video" ? { url: nextVideoUrl as string } : undefined;
-    toque.image = nextMediaType === "image" ? { url: nextImageUrls[0] as string } : undefined;
+    toque.image = nextImageUrls[0] ? { url: nextImageUrls[0] as string } : undefined;
     toque.images = nextMediaType === "image" ? nextImageUrls.map((url) => ({ url })) : undefined;
 
     await toque.save();

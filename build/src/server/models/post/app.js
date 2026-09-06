@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const locales_1 = require("../../i18n/locales");
 /* ======================================================
  * SUBSCHEMA: MEDIA
  * ====================================================== */
@@ -62,6 +63,75 @@ const mediaSchema = new mongoose_1.Schema({
     totalPages: {
         type: Number,
         min: 1,
+        default: undefined,
+    },
+}, {
+    _id: false,
+});
+const translatedMediaSchema = new mongoose_1.Schema({
+    title: {
+        type: String,
+        trim: true,
+        default: undefined,
+    },
+}, {
+    _id: false,
+});
+const postTranslationSchema = new mongoose_1.Schema({
+    locale: {
+        type: String,
+        enum: locales_1.SUPPORTED_CONTENT_LOCALES,
+        required: true,
+    },
+    sourceVersion: {
+        type: Number,
+        required: true,
+        min: 1,
+    },
+    status: {
+        type: String,
+        enum: ["machine", "reviewed", "stale"],
+        required: true,
+        default: "machine",
+    },
+    provider: {
+        type: String,
+        trim: true,
+        default: undefined,
+    },
+    title: {
+        type: String,
+        trim: true,
+        default: undefined,
+    },
+    description: {
+        type: String,
+        trim: true,
+        default: undefined,
+    },
+    playlistTitle: {
+        type: String,
+        trim: true,
+        default: undefined,
+    },
+    videos: {
+        type: [translatedMediaSchema],
+        default: undefined,
+    },
+    documents: {
+        type: [translatedMediaSchema],
+        default: undefined,
+    },
+    images: {
+        type: [translatedMediaSchema],
+        default: undefined,
+    },
+    playlist: {
+        type: [translatedMediaSchema],
+        default: undefined,
+    },
+    updatedAt: {
+        type: Date,
         default: undefined,
     },
 }, {
@@ -144,6 +214,22 @@ const postSchema = new mongoose_1.Schema({
         type: [mediaSchema],
         default: undefined,
     },
+    originalLocale: {
+        type: String,
+        enum: locales_1.SUPPORTED_CONTENT_LOCALES,
+        default: locales_1.DEFAULT_CONTENT_LOCALE,
+        index: true,
+    },
+    sourceVersion: {
+        type: Number,
+        default: 1,
+        min: 1,
+    },
+    translations: {
+        type: Map,
+        of: postTranslationSchema,
+        default: undefined,
+    },
     isPublished: {
         type: Boolean,
         default: true,
@@ -158,6 +244,7 @@ const postSchema = new mongoose_1.Schema({
 postSchema.index({ createdAt: -1 });
 postSchema.index({ isPublished: 1, createdAt: -1 });
 postSchema.index({ creatorId: 1, createdAt: -1 });
+postSchema.index({ originalLocale: 1, createdAt: -1 });
 postSchema.index({ playlistTitle: 1, playlistOrder: 1 });
 postSchema.index({
     subjectIds: 1,
@@ -175,6 +262,12 @@ postSchema.index({
 postSchema.pre("validate", function () {
     if ((!this.subjectIds || this.subjectIds.length === 0) && this.subjectId) {
         this.subjectIds = [this.subjectId];
+    }
+    if (!this.originalLocale) {
+        this.originalLocale = locales_1.DEFAULT_CONTENT_LOCALE;
+    }
+    if (!this.sourceVersion || this.sourceVersion < 1) {
+        this.sourceVersion = 1;
     }
     if (this.subjectIds) {
         this.subjectIds = [...new Set(this.subjectIds.map(id => id.trim()).filter(Boolean))];

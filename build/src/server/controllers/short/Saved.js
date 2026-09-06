@@ -7,7 +7,8 @@ exports.deleteSavedToque = exports.saveToque = exports.getSavedToqueStatus = exp
 const mongoose_1 = require("mongoose");
 const app_1 = __importDefault(require("../../models/savedToque/app"));
 const app_2 = __importDefault(require("../../models/shorts/app"));
-const TOQUE_PREVIEW_SELECT = "area title description mediaType video image isPublished createdAt updatedAt";
+const Get_1 = require("./Get");
+const TOQUE_PREVIEW_SELECT = "creatorId area title description mediaType video image images isPublished createdAt updatedAt";
 const parsePositiveInteger = (value, fallback, max) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -38,7 +39,17 @@ const stringifyId = (id) => {
 };
 const asOptionalString = (value) => typeof value === "string" && value.trim() ? value.trim() : undefined;
 const asRequiredString = (value) => typeof value === "string" ? value : "";
+const getToqueImageUrls = (plainToque) => {
+    const images = Array.isArray(plainToque.images) ? plainToque.images : [];
+    const image = plainToque.image;
+    const urls = [
+        ...images.map((item) => asOptionalString(item === null || item === void 0 ? void 0 : item.url)),
+        asOptionalString(image === null || image === void 0 ? void 0 : image.url),
+    ];
+    return Array.from(new Set(urls.filter((url) => Boolean(url))));
+};
 const toToquePreview = (toque) => {
+    var _a;
     if (!toque || typeof toque !== "object") {
         return toque;
     }
@@ -49,14 +60,25 @@ const toToquePreview = (toque) => {
     const mediaType = plainToque.mediaType === "image" ? "image" : "video";
     const video = plainToque.video;
     const image = plainToque.image;
+    const imageUrls = mediaType === "image" ? getToqueImageUrls(plainToque) : [];
+    const videoPosterUrl = mediaType === "video" ? asOptionalString(image === null || image === void 0 ? void 0 : image.url) : undefined;
+    const creator = (0, Get_1.toCreatorPreview)(plainToque.creatorId);
+    const rawCreatorId = plainToque.creatorId;
+    const creatorId = (_a = creator === null || creator === void 0 ? void 0 : creator.id) !== null && _a !== void 0 ? _a : (rawCreatorId instanceof mongoose_1.Types.ObjectId || typeof rawCreatorId === "string"
+        ? stringifyId(rawCreatorId)
+        : undefined);
     return {
         _id: stringifyId(plainToque._id),
+        creatorId,
+        creator,
         area: asRequiredString(plainToque.area),
         title: asRequiredString(plainToque.title),
         description: asRequiredString(plainToque.description),
         mediaType,
         videoUrl: mediaType === "video" ? asOptionalString(video === null || video === void 0 ? void 0 : video.url) : undefined,
-        imageUrl: mediaType === "image" ? asOptionalString(image === null || image === void 0 ? void 0 : image.url) : undefined,
+        imageUrl: mediaType === "image" ? imageUrls[0] : videoPosterUrl,
+        imageUrls: mediaType === "image" ? imageUrls : undefined,
+        images: mediaType === "image" ? imageUrls.map((url) => ({ url })) : undefined,
         isPublished: Boolean(plainToque.isPublished),
         createdAt: plainToque.createdAt,
         updatedAt: plainToque.updatedAt,
@@ -87,6 +109,10 @@ const getSavedToques = async (req, res) => {
                 .populate({
                 path: "toqueId",
                 select: TOQUE_PREVIEW_SELECT,
+                populate: {
+                    path: "creatorId",
+                    select: Get_1.TOQUE_CREATOR_SELECT,
+                },
             })
                 .lean(),
             app_1.default.countDocuments({ userId: userObjectId }),
@@ -146,7 +172,10 @@ const saveToque = async (req, res) => {
         }
         const userObjectId = new mongoose_1.Types.ObjectId(userId);
         const toqueObjectId = new mongoose_1.Types.ObjectId(toqueId);
-        const toque = await app_2.default.findById(toqueObjectId).select(TOQUE_PREVIEW_SELECT);
+        const toque = await app_2.default.findById(toqueObjectId).select(TOQUE_PREVIEW_SELECT).populate({
+            path: "creatorId",
+            select: Get_1.TOQUE_CREATOR_SELECT,
+        });
         if (!toque) {
             res.status(404).json({ error: "Toque not found" });
             return;

@@ -1,4 +1,4 @@
-﻿import { Router, Request, Response } from "express";
+import { Router, Request, Response } from "express";
 import multer from "multer";
 import { PostController } from "../controllers/app";
 import { ShortController } from "../controllers/app";
@@ -75,6 +75,11 @@ router.get("/", (req: Request, res: Response) => {
         save: "POST /toques/:id/save",
         unsave: "DELETE /toques/:id/save",
         savedStatus: "GET /toques/:id/save",
+        social: "GET /toques/:id/social",
+        like: "POST /toques/:id/like",
+        unlike: "DELETE /toques/:id/like",
+        comments: "GET/POST /toques/:id/comments",
+        context: "GET /toques/:id/context",
       },
       auth: {
         register: "POST /auth/register",
@@ -98,6 +103,7 @@ router.post("/auth/login", AuthController.login);
 router.post("/auth/logout", AuthController.logout);
 router.get("/auth/username", AuthController.checkUsername);
 router.get("/auth/me", authenticate, AuthController.getMe);
+router.patch("/auth/preferred-locale", authenticate, AuthController.updatePreferredLocale);
 router.post(
   "/auth/creator-application",
   authenticate,
@@ -138,6 +144,12 @@ router.get("/toques/saved", authenticate, ShortController.getSavedToques);
 router.get("/toques/:id/save", authenticate, ShortController.getSavedToqueStatus);
 router.post("/toques/:id/save", authenticate, ShortController.saveToque);
 router.delete("/toques/:id/save", authenticate, ShortController.deleteSavedToque);
+router.get("/toques/:id/social", ShortController.getToqueSocialSummary);
+router.post("/toques/:id/like", authenticate, ShortController.likeToque);
+router.delete("/toques/:id/like", authenticate, ShortController.unlikeToque);
+router.get("/toques/:id/comments", ShortController.getToqueComments);
+router.post("/toques/:id/comments", authenticate, ShortController.createToqueComment);
+router.get("/toques/:id/context", ShortController.getToqueContext);
 router.put("/toques/:id", authenticate, requireCreator, ShortController.update);
 router.delete("/toques/:id", authenticate, requireCreator, ShortController.deleteToque);
 router.get("/toques/:id", ShortController.getToqueById);

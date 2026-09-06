@@ -1,4 +1,4 @@
-﻿import { v2 as cloudinary, UploadApiOptions, UploadApiResponse } from "cloudinary";
+import { v2 as cloudinary, UploadApiOptions, UploadApiResponse } from "cloudinary";
 
 type ProfileImageSlot = "avatar" | "cover";
 export type PublicationMediaKind = "image" | "video" | "document";
@@ -92,11 +92,9 @@ const getPublicationResourceType = (type: PublicationMediaKind) =>
 const getPublicationThumbnailUrl = ({
   publicId,
   type,
-  url,
 }: {
   publicId: string;
   type: PublicationMediaKind;
-  url: string;
 }) => {
   if (type === "image") {
     return cloudinary.url(publicId, {
@@ -216,7 +214,7 @@ export const uploadPublicationMediaToCloudinary = async ({
   const response: PublicationMediaUploadResult = {
     type,
     url,
-    thumbnailUrl: getPublicationThumbnailUrl({ publicId: uploadResult.public_id, type, url }),
+    thumbnailUrl: getPublicationThumbnailUrl({ publicId: uploadResult.public_id, type }),
     originalName: file.originalname,
     title: getBaseName(file.originalname),
     bytes: file.size,

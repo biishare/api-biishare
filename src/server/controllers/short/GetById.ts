@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Types } from "mongoose";
 
 import ToqueModel from "../../models/shorts/app";
-import { toToquePreview } from "./Saved";
+import { TOQUE_CREATOR_SELECT, toToqueResponse } from "./Get";
 
 export const getToqueById = async (req: Request, res: Response) => {
   try {
@@ -12,13 +12,16 @@ export const getToqueById = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid toque id" });
     }
 
-    const toque = await ToqueModel.findById(id);
+    const toque = await ToqueModel.findById(id).populate({
+      path: "creatorId",
+      select: TOQUE_CREATOR_SELECT,
+    });
 
     if (!toque) {
       return res.status(404).json({ error: "Toque not found" });
     }
 
-    res.json(toToquePreview(toque));
+    res.json(toToqueResponse(toque));
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to fetch toque" });

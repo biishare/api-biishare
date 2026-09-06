@@ -1,9 +1,15 @@
 import { Request, Response } from "express";
 import { Types } from "mongoose";
+
+import { DEFAULT_CONTENT_LOCALE, normalizeContentLocale } from "../../i18n/locales";
 import PostModel, { PostContentType } from "../../models/post/app";
+import { toPostResponse } from "./Presenter";
 import { normalizeSubjectIds } from "./utils";
 
 const CONTENT_TYPES: PostContentType[] = ["video", "document", "image", "playlist"];
+
+type DocumentPayload = { totalPages?: unknown };
+type PlaylistPayload = { kind?: unknown; totalPages?: unknown };
 
 const isContentType = (value: unknown): value is PostContentType =>
   typeof value === "string" && CONTENT_TYPES.includes(value as PostContentType);
@@ -25,6 +31,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       isPublished,
       playlistTitle,
       playlistOrder,
+      originalLocale,
     } = req.body;
     const subjectIds = normalizeSubjectIds(rawSubjectIds, subjectId);
     const normalizedTitle = typeof title === "string" ? title.trim() : "";
@@ -36,6 +43,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
     const normalizedPlaylistTitle =
       typeof playlistTitle === "string" ? playlistTitle.trim() : "";
     const normalizedPlaylistOrder = Number(playlistOrder);
+    const normalizedOriginalLocale = normalizeContentLocale(originalLocale) ?? DEFAULT_CONTENT_LOCALE;
     const userId = res.locals.userId;
 
     if (typeof userId !== "string" || !Types.ObjectId.isValid(userId)) {
@@ -70,9 +78,10 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      const invalidDoc = documents.find(
-        (doc: any) => typeof doc.totalPages !== "number" || doc.totalPages < 1
-      );
+      const invalidDoc = documents.find((doc: unknown) => {
+        const documentPayload = doc as DocumentPayload;
+        return typeof documentPayload.totalPages !== "number" || documentPayload.totalPages < 1;
+      });
 
       if (invalidDoc) {
         res.status(400).json({ error: "Todo documento deve conter o numero total de paginas." });
@@ -91,18 +100,21 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      const invalidItem = playlist.find(
-        (item: any) => item.kind !== "video" && item.kind !== "document"
-      );
+      const invalidItem = playlist.find((item: unknown) => {
+        const playlistPayload = item as PlaylistPayload;
+        return playlistPayload.kind !== "video" && playlistPayload.kind !== "document";
+      });
 
       if (invalidItem) {
         res.status(400).json({ error: "Playlist aceita apenas videos e documentos." });
         return;
       }
 
-      const invalidDoc = playlist.find(
-        (item: any) => item.kind === "document" && (typeof item.totalPages !== "number" || item.totalPages < 1)
-      );
+      const invalidDoc = playlist.find((item: unknown) => {
+        const playlistPayload = item as PlaylistPayload;
+        return playlistPayload.kind === "document" &&
+          (typeof playlistPayload.totalPages !== "number" || playlistPayload.totalPages < 1);
+      });
 
       if (invalidDoc) {
         res.status(400).json({ error: "Documentos da playlist precisam do numero total de paginas." });
@@ -120,6 +132,8 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       contentType,
       imageLink: normalizedImageLink,
       isPublished: isPublished !== false,
+      originalLocale: normalizedOriginalLocale,
+      sourceVersion: 1,
       playlistTitle: normalizedPlaylistTitle || undefined,
       playlistOrder: Number.isFinite(normalizedPlaylistOrder) && normalizedPlaylistOrder > 0
         ? Math.floor(normalizedPlaylistOrder)
@@ -134,7 +148,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
     res.status(201).json({
       message: "Post criado com sucesso!",
-      data: newPost,
+      data: toPostResponse(newPost),
     });
   } catch (error) {
     console.error(error);

@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const locales_1 = require("../../i18n/locales");
 const creatorApplicationSchema = new mongoose_1.Schema({
     workDescription: {
         type: String,
@@ -115,6 +116,11 @@ const userSchema = new mongoose_1.Schema({
     },
     coverUrl: {
         type: String,
+        default: undefined,
+    },
+    preferredLocale: {
+        type: String,
+        enum: locales_1.SUPPORTED_CONTENT_LOCALES,
         default: undefined,
     },
     creatorStatus: {

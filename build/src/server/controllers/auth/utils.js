@@ -118,6 +118,7 @@ const sanitizeUser = (user) => {
         email: user.email,
         avatarUrl: user.avatarUrl,
         coverUrl: user.coverUrl,
+        preferredLocale: user.preferredLocale,
         creatorStatus,
         isCreator: creatorStatus === "approved",
         creatorAppliedAt: user.creatorAppliedAt,

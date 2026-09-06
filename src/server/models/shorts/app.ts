@@ -114,9 +114,9 @@ const toqueSchema = new Schema<IToque>(
 /* ======================================================
  * INDICES
  * ====================================================== */
-toqueSchema.index({ createdAt: -1 });
+toqueSchema.index({ createdAt: -1, _id: -1 });
 toqueSchema.index({ creatorId: 1, createdAt: -1 });
-toqueSchema.index({ area: 1, createdAt: -1 });
+toqueSchema.index({ area: 1, createdAt: -1, _id: -1 });
 toqueSchema.index({ mediaType: 1, createdAt: -1 });
 
 /* ======================================================
@@ -124,8 +124,11 @@ toqueSchema.index({ mediaType: 1, createdAt: -1 });
  * ====================================================== */
 toqueSchema.pre("validate", function () {
   if (this.mediaType === "video") {
-    this.image = undefined;
     this.images = undefined;
+
+    if (this.image && !this.image.url) {
+      this.image = undefined;
+    }
 
     if (!this.video?.url) {
       this.invalidate(

@@ -6,6 +6,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.create = void 0;
 const mongoose_1 = require("mongoose");
 const app_1 = __importDefault(require("../../models/shorts/app"));
+const Saved_1 = require("./Saved");
+const asOptionalString = (value) => typeof value === "string" && value.trim() ? value.trim() : undefined;
+const getImageUrlsFromBody = (body) => {
+    const images = Array.isArray(body.images) ? body.images : [];
+    const imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls : [];
+    const urls = [
+        ...images.map((item) => typeof item === "string"
+            ? asOptionalString(item)
+            : asOptionalString(item === null || item === void 0 ? void 0 : item.url)),
+        ...imageUrls.map(asOptionalString),
+        asOptionalString(body.imageUrl),
+    ];
+    return Array.from(new Set(urls.filter((url) => Boolean(url))));
+};
 /* ======================================================
  * CREATE TOQUE (SHORT)
  * ====================================================== */
@@ -22,8 +36,8 @@ const create = async (req, res) => {
             res.status(400).json({ error: "Campos obrigatorios ausentes." });
             return;
         }
-        if (mediaType !== "video") {
-            res.status(400).json({ error: "Toques aceitam apenas videos." });
+        if (mediaType !== "video" && mediaType !== "image") {
+            res.status(400).json({ error: "Toques aceitam video ou imagem." });
             return;
         }
         if (title.trim().length < 3 || title.trim().length > 80) {
@@ -34,8 +48,13 @@ const create = async (req, res) => {
             res.status(400).json({ error: "Descricao deve ter entre 20 e 600 caracteres." });
             return;
         }
-        if (!videoUrl || typeof videoUrl !== "string") {
+        if (mediaType === "video" && (!videoUrl || typeof videoUrl !== "string")) {
             res.status(400).json({ error: "Toque precisa de um link de video." });
+            return;
+        }
+        const imageUrls = getImageUrlsFromBody(req.body);
+        if (mediaType === "image" && imageUrls.length === 0) {
+            res.status(400).json({ error: "Toque precisa de pelo menos uma imagem." });
             return;
         }
         const newToque = new app_1.default({
@@ -43,21 +62,22 @@ const create = async (req, res) => {
             area: area.toLowerCase().trim(),
             title: title.trim(),
             description: description.trim(),
-            mediaType: "video",
-            video: { url: videoUrl.trim() },
-            image: undefined,
+            mediaType,
+            video: mediaType === "video" ? { url: videoUrl.trim() } : undefined,
+            image: imageUrls[0] ? { url: imageUrls[0] } : undefined,
+            images: mediaType === "image" ? imageUrls.map((url) => ({ url })) : undefined,
             isPublished: isPublished !== false,
         });
         await newToque.save();
         res.status(201).json({
             message: "Toque criado com sucesso!",
-            data: newToque,
+            data: (0, Saved_1.toToquePreview)(newToque),
         });
     }
     catch (error) {
         console.error(error);
         res.status(500).json({
-            error: (error === null || error === void 0 ? void 0 : error.message) || "Erro ao criar toque.",
+            error: error instanceof Error ? error.message : "Erro ao criar toque.",
         });
     }
 };

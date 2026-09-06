@@ -20,7 +20,7 @@ const getPostFilters = async (req, res) => {
             contentTypes,
         });
     }
-    catch (err) {
+    catch {
         res.status(500).json({
             error: "Failed to fetch filters",
         });

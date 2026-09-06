@@ -76,7 +76,7 @@ export const create = async (
       return;
     }
 
-    const imageUrls = mediaType === "image" ? getImageUrlsFromBody(req.body) : [];
+    const imageUrls = getImageUrlsFromBody(req.body);
 
     if (mediaType === "image" && imageUrls.length === 0) {
       res.status(400).json({ error: "Toque precisa de pelo menos uma imagem." });
@@ -90,7 +90,7 @@ export const create = async (
       description: description.trim(),
       mediaType,
       video: mediaType === "video" ? { url: videoUrl.trim() } : undefined,
-      image: mediaType === "image" ? { url: imageUrls[0] } : undefined,
+      image: imageUrls[0] ? { url: imageUrls[0] } : undefined,
       images: mediaType === "image" ? imageUrls.map((url) => ({ url })) : undefined,
       isPublished: isPublished !== false,
     });
@@ -101,11 +101,11 @@ export const create = async (
       message: "Toque criado com sucesso!",
       data: toToquePreview(newToque),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
 
     res.status(500).json({
-      error: error?.message || "Erro ao criar toque.",
+      error: error instanceof Error ? error.message : "Erro ao criar toque.",
     });
   }
 };

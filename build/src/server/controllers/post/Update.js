@@ -6,7 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.update = void 0;
 const mongoose_1 = require("mongoose");
 const creatorOwnership_1 = require("../creatorOwnership");
+const locales_1 = require("../../i18n/locales");
 const app_1 = __importDefault(require("../../models/post/app"));
+const Presenter_1 = require("./Presenter");
+const Translation_1 = require("./Translation");
 const utils_1 = require("./utils");
 const CONTENT_TYPES = ["video", "document", "image", "playlist"];
 const isContentType = (value) => typeof value === "string" && CONTENT_TYPES.includes(value);
@@ -106,8 +109,16 @@ const update = async (req, res) => {
             post.set("documents", undefined);
             post.set("images", undefined);
         }
+        if ((0, Translation_1.hasTranslatablePostChanges)(req.body)) {
+            (0, Translation_1.markPostTranslationsStale)(post);
+        }
         await post.save();
-        res.status(200).json({ message: "Post atualizado com sucesso!", data: post });
+        res.status(200).json({
+            message: "Post atualizado com sucesso!",
+            data: (0, Presenter_1.toPostResponse)(post, {
+                locale: (0, locales_1.normalizeContentLocale)(req.query.locale),
+            }),
+        });
     }
     catch (error) {
         console.error(error);

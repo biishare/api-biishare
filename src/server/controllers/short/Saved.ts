@@ -3,9 +3,10 @@ import { Types } from "mongoose";
 
 import SavedToqueModel from "../../models/savedToque/app";
 import ToqueModel from "../../models/shorts/app";
+import { TOQUE_CREATOR_SELECT, toCreatorPreview } from "./Get";
 
 const TOQUE_PREVIEW_SELECT =
-  "area title description mediaType video image images isPublished createdAt updatedAt";
+  "creatorId area title description mediaType video image images isPublished createdAt updatedAt";
 
 const parsePositiveInteger = (
   value: unknown,
@@ -91,16 +92,27 @@ export const toToquePreview = (toque: unknown): unknown => {
 
   const mediaType = plainToque.mediaType === "image" ? "image" : "video";
   const video = plainToque.video as MediaPreviewSource | undefined;
+  const image = plainToque.image as MediaPreviewSource | undefined;
   const imageUrls = mediaType === "image" ? getToqueImageUrls(plainToque) : [];
+  const videoPosterUrl = mediaType === "video" ? asOptionalString(image?.url) : undefined;
+  const creator = toCreatorPreview(plainToque.creatorId);
+  const rawCreatorId = plainToque.creatorId;
+  const creatorId =
+    creator?.id ??
+    (rawCreatorId instanceof Types.ObjectId || typeof rawCreatorId === "string"
+      ? stringifyId(rawCreatorId)
+      : undefined);
 
   return {
     _id: stringifyId(plainToque._id),
+    creatorId,
+    creator,
     area: asRequiredString(plainToque.area),
     title: asRequiredString(plainToque.title),
     description: asRequiredString(plainToque.description),
     mediaType,
     videoUrl: mediaType === "video" ? asOptionalString(video?.url) : undefined,
-    imageUrl: mediaType === "image" ? imageUrls[0] : undefined,
+    imageUrl: mediaType === "image" ? imageUrls[0] : videoPosterUrl,
     imageUrls: mediaType === "image" ? imageUrls : undefined,
     images: mediaType === "image" ? imageUrls.map((url) => ({ url })) : undefined,
     isPublished: Boolean(plainToque.isPublished),
@@ -143,6 +155,10 @@ export const getSavedToques = async (
         .populate({
           path: "toqueId",
           select: TOQUE_PREVIEW_SELECT,
+          populate: {
+            path: "creatorId",
+            select: TOQUE_CREATOR_SELECT,
+          },
         })
         .lean(),
       SavedToqueModel.countDocuments({ userId: userObjectId }),
@@ -217,7 +233,10 @@ export const saveToque = async (
     const toqueObjectId = new Types.ObjectId(toqueId);
     const toque = await ToqueModel.findById(toqueObjectId).select(
       TOQUE_PREVIEW_SELECT
-    );
+    ).populate({
+      path: "creatorId",
+      select: TOQUE_CREATOR_SELECT,
+    });
 
     if (!toque) {
       res.status(404).json({ error: "Toque not found" });

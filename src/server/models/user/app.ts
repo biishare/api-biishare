@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+import { ContentLocale, SUPPORTED_CONTENT_LOCALES } from "../../i18n/locales";
+
 export type CreatorStatus = "none" | "pending" | "approved";
 
 export type CreatorApplication = {
@@ -19,6 +21,7 @@ export interface IUser extends Document {
   facebookId?: string;
   avatarUrl?: string;
   coverUrl?: string;
+  preferredLocale?: ContentLocale;
   creatorStatus: CreatorStatus;
   creatorAppliedAt?: Date;
   creatorApprovedAt?: Date;
@@ -121,6 +124,12 @@ const userSchema = new Schema<IUser>(
 
     coverUrl: {
       type: String,
+      default: undefined,
+    },
+
+    preferredLocale: {
+      type: String,
+      enum: SUPPORTED_CONTENT_LOCALES,
       default: undefined,
     },
 

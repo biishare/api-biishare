@@ -1,9 +1,13 @@
-﻿import { Request, Response } from "express";
+import { Request, Response } from "express";
 import { Types } from "mongoose";
 
+import { normalizeContentLocale, ContentLocale } from "../../i18n/locales";
 import PostModel from "../../models/post/app";
 import SavedPostModel from "../../models/savedPost/app";
 import { toPostResponse } from "./Presenter";
+
+const SAVED_POST_SELECT =
+  "creatorId subjectId subjectIds title description level contentType imageLink playlistTitle playlistOrder videos documents images playlist isPublished originalLocale sourceVersion translations createdAt updatedAt";
 
 const parsePositiveInteger = (
   value: unknown,
@@ -53,34 +57,14 @@ const stringifyId = (id: unknown): string => {
   return typeof id === "string" ? id : String(id);
 };
 
-const oldToSavedPostPreview = (post: unknown): unknown => {
-  if (!post || typeof post !== "object") {
-    return post;
-  }
-
-  const documentLikePost = post as {
-    toObject?: () => Record<string, unknown>;
-  };
-  const plainPost =
-    typeof documentLikePost.toObject === "function"
-      ? documentLikePost.toObject()
-      : (post as Record<string, unknown>);
-
-  return {
-    ...plainPost,
-    _id: stringifyId(plainPost._id),
-    imageLink:
-      typeof plainPost.imageLink === "string" ? plainPost.imageLink.trim() : "",
-  };
-};
-
 const buildSavedPostPayload = (
   savedPost: SavedPostPayloadSource,
-  post: unknown
+  post: unknown,
+  locale?: ContentLocale | null
 ) => ({
   id: stringifyId(savedPost._id),
   savedAt: savedPost.createdAt,
-  post: toPostResponse(post),
+  post: toPostResponse(post, { locale }),
 });
 
 export const getSavedPosts = async (
@@ -98,6 +82,7 @@ export const getSavedPosts = async (
     const pageNumber = parsePositiveInteger(req.query.page, 1);
     const limitNumber = parsePositiveInteger(req.query.limit, 20, 50);
     const skip = (pageNumber - 1) * limitNumber;
+    const locale = normalizeContentLocale(req.query.locale);
     const userObjectId = new Types.ObjectId(userId);
 
     const [savedPosts, total] = await Promise.all([
@@ -107,8 +92,7 @@ export const getSavedPosts = async (
         .limit(limitNumber)
         .populate({
           path: "postId",
-          select:
-            "creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt",
+          select: SAVED_POST_SELECT,
           populate: {
             path: "creatorId",
             select: "name username avatarUrl email",
@@ -121,7 +105,7 @@ export const getSavedPosts = async (
     const data = savedPosts
       .filter(savedPost => savedPost.postId)
       .map(savedPost =>
-        buildSavedPostPayload(savedPost, savedPost.postId)
+        buildSavedPostPayload(savedPost, savedPost.postId, locale)
       );
 
     res.status(200).json({
@@ -187,8 +171,9 @@ export const savePost = async (
 
     const userObjectId = new Types.ObjectId(userId);
     const postObjectId = new Types.ObjectId(postId);
+    const locale = normalizeContentLocale(req.query.locale);
     const post = await PostModel.findById(postObjectId).select(
-      "creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt"
+      SAVED_POST_SELECT
     ).populate({
       path: "creatorId",
       select: "name username avatarUrl email",
@@ -212,7 +197,7 @@ export const savePost = async (
 
     res.status(200).json({
       saved: true,
-      data: buildSavedPostPayload(savedPost, post),
+      data: buildSavedPostPayload(savedPost, post, locale),
     });
   } catch (error) {
     console.error(error);

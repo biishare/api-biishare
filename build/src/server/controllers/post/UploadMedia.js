@@ -20,7 +20,9 @@ const uploadPublicationMedia = async (req, res) => {
     }
     catch (error) {
         console.error(error);
-        res.status(400).json({ error: (error === null || error === void 0 ? void 0 : error.message) || "Nao foi possivel carregar o ficheiro." });
+        res.status(400).json({
+            error: (error instanceof Error ? error.message : undefined) || "Nao foi possivel carregar o ficheiro.",
+        });
     }
 };
 exports.uploadPublicationMedia = uploadPublicationMedia;

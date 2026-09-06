@@ -75,6 +75,11 @@ router.get("/", (req, res) => {
                 save: "POST /toques/:id/save",
                 unsave: "DELETE /toques/:id/save",
                 savedStatus: "GET /toques/:id/save",
+                social: "GET /toques/:id/social",
+                like: "POST /toques/:id/like",
+                unlike: "DELETE /toques/:id/like",
+                comments: "GET/POST /toques/:id/comments",
+                context: "GET /toques/:id/context",
             },
             auth: {
                 register: "POST /auth/register",
@@ -97,6 +102,7 @@ router.post("/auth/login", app_3.AuthController.login);
 router.post("/auth/logout", app_3.AuthController.logout);
 router.get("/auth/username", app_3.AuthController.checkUsername);
 router.get("/auth/me", auth_1.authenticate, app_3.AuthController.getMe);
+router.patch("/auth/preferred-locale", auth_1.authenticate, app_3.AuthController.updatePreferredLocale);
 router.post("/auth/creator-application", auth_1.authenticate, profileImageUpload.single("verificationPhoto"), app_3.AuthController.applyCreatorApplication);
 router.get("/auth/google", app_3.AuthController.googleAuth);
 router.get("/auth/google/callback", app_3.AuthController.googleCallback);
@@ -125,6 +131,12 @@ router.get("/toques/saved", auth_1.authenticate, app_2.ShortController.getSavedT
 router.get("/toques/:id/save", auth_1.authenticate, app_2.ShortController.getSavedToqueStatus);
 router.post("/toques/:id/save", auth_1.authenticate, app_2.ShortController.saveToque);
 router.delete("/toques/:id/save", auth_1.authenticate, app_2.ShortController.deleteSavedToque);
+router.get("/toques/:id/social", app_2.ShortController.getToqueSocialSummary);
+router.post("/toques/:id/like", auth_1.authenticate, app_2.ShortController.likeToque);
+router.delete("/toques/:id/like", auth_1.authenticate, app_2.ShortController.unlikeToque);
+router.get("/toques/:id/comments", app_2.ShortController.getToqueComments);
+router.post("/toques/:id/comments", auth_1.authenticate, app_2.ShortController.createToqueComment);
+router.get("/toques/:id/context", app_2.ShortController.getToqueContext);
 router.put("/toques/:id", auth_1.authenticate, auth_1.requireCreator, app_2.ShortController.update);
 router.delete("/toques/:id", auth_1.authenticate, auth_1.requireCreator, app_2.ShortController.deleteToque);
 router.get("/toques/:id", app_2.ShortController.getToqueById);

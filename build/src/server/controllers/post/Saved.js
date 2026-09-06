@@ -5,9 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteSavedPost = exports.savePost = exports.getSavedPostStatus = exports.getSavedPosts = void 0;
 const mongoose_1 = require("mongoose");
+const locales_1 = require("../../i18n/locales");
 const app_1 = __importDefault(require("../../models/post/app"));
 const app_2 = __importDefault(require("../../models/savedPost/app"));
 const Presenter_1 = require("./Presenter");
+const SAVED_POST_SELECT = "creatorId subjectId subjectIds title description level contentType imageLink playlistTitle playlistOrder videos documents images playlist isPublished originalLocale sourceVersion translations createdAt updatedAt";
 const parsePositiveInteger = (value, fallback, max) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 1) {
@@ -36,24 +38,10 @@ const stringifyId = (id) => {
     }
     return typeof id === "string" ? id : String(id);
 };
-const oldToSavedPostPreview = (post) => {
-    if (!post || typeof post !== "object") {
-        return post;
-    }
-    const documentLikePost = post;
-    const plainPost = typeof documentLikePost.toObject === "function"
-        ? documentLikePost.toObject()
-        : post;
-    return {
-        ...plainPost,
-        _id: stringifyId(plainPost._id),
-        imageLink: typeof plainPost.imageLink === "string" ? plainPost.imageLink.trim() : "",
-    };
-};
-const buildSavedPostPayload = (savedPost, post) => ({
+const buildSavedPostPayload = (savedPost, post, locale) => ({
     id: stringifyId(savedPost._id),
     savedAt: savedPost.createdAt,
-    post: (0, Presenter_1.toPostResponse)(post),
+    post: (0, Presenter_1.toPostResponse)(post, { locale }),
 });
 const getSavedPosts = async (req, res) => {
     try {
@@ -65,6 +53,7 @@ const getSavedPosts = async (req, res) => {
         const pageNumber = parsePositiveInteger(req.query.page, 1);
         const limitNumber = parsePositiveInteger(req.query.limit, 20, 50);
         const skip = (pageNumber - 1) * limitNumber;
+        const locale = (0, locales_1.normalizeContentLocale)(req.query.locale);
         const userObjectId = new mongoose_1.Types.ObjectId(userId);
         const [savedPosts, total] = await Promise.all([
             app_2.default.find({ userId: userObjectId })
@@ -73,7 +62,7 @@ const getSavedPosts = async (req, res) => {
                 .limit(limitNumber)
                 .populate({
                 path: "postId",
-                select: "creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt",
+                select: SAVED_POST_SELECT,
                 populate: {
                     path: "creatorId",
                     select: "name username avatarUrl email",
@@ -84,7 +73,7 @@ const getSavedPosts = async (req, res) => {
         ]);
         const data = savedPosts
             .filter(savedPost => savedPost.postId)
-            .map(savedPost => buildSavedPostPayload(savedPost, savedPost.postId));
+            .map(savedPost => buildSavedPostPayload(savedPost, savedPost.postId, locale));
         res.status(200).json({
             page: pageNumber,
             limit: limitNumber,
@@ -137,7 +126,8 @@ const savePost = async (req, res) => {
         }
         const userObjectId = new mongoose_1.Types.ObjectId(userId);
         const postObjectId = new mongoose_1.Types.ObjectId(postId);
-        const post = await app_1.default.findById(postObjectId).select("creatorId subjectId subjectIds title description level contentType imageLink videos documents images playlist createdAt updatedAt").populate({
+        const locale = (0, locales_1.normalizeContentLocale)(req.query.locale);
+        const post = await app_1.default.findById(postObjectId).select(SAVED_POST_SELECT).populate({
             path: "creatorId",
             select: "name username avatarUrl email",
         });
@@ -155,7 +145,7 @@ const savePost = async (req, res) => {
         }));
         res.status(200).json({
             saved: true,
-            data: buildSavedPostPayload(savedPost, post),
+            data: buildSavedPostPayload(savedPost, post, locale),
         });
     }
     catch (error) {

@@ -5,7 +5,10 @@ import {
   canManageCreatorContent,
   getAuthenticatedContentOwner,
 } from "../creatorOwnership";
+import { normalizeContentLocale } from "../../i18n/locales";
 import PostModel, { PostContentType } from "../../models/post/app";
+import { toPostResponse } from "./Presenter";
+import { hasTranslatablePostChanges, markPostTranslationsStale } from "./Translation";
 import { normalizeSubjectIds } from "./utils";
 
 const CONTENT_TYPES: PostContentType[] = ["video", "document", "image", "playlist"];
@@ -148,9 +151,18 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       post.set("images", undefined);
     }
 
+    if (hasTranslatablePostChanges(req.body)) {
+      markPostTranslationsStale(post);
+    }
+
     await post.save();
 
-    res.status(200).json({ message: "Post atualizado com sucesso!", data: post });
+    res.status(200).json({
+      message: "Post atualizado com sucesso!",
+      data: toPostResponse(post, {
+        locale: normalizeContentLocale(req.query.locale),
+      }),
+    });
   } catch (error: unknown) {
     console.error(error);
     res.status(500).json({ error: "Erro ao atualizar o post." });

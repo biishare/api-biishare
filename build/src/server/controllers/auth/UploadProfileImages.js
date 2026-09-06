@@ -47,7 +47,7 @@ const uploadProfileImages = async (req, res) => {
     catch (error) {
         console.error(error);
         res.status(500).json({
-            error: (error === null || error === void 0 ? void 0 : error.message) || "Erro ao atualizar imagens do perfil.",
+            error: (error instanceof Error ? error.message : undefined) || "Erro ao atualizar imagens do perfil.",
         });
     }
 };

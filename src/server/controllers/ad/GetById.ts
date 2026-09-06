@@ -101,12 +101,12 @@ export const getAdById = async (
 
       data,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
 
     res.status(500).json({
       error:
-        error?.message ||
+        (error instanceof Error ? error.message : undefined) ||
         "Failed to fetch ad",
     });
   }

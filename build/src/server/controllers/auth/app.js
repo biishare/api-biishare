@@ -38,6 +38,7 @@ const checkUsername = __importStar(require("./CheckUsername"));
 const creatorApplication = __importStar(require("./CreatorApplication"));
 const getMe = __importStar(require("./GetMe"));
 const login = __importStar(require("./Login"));
+const preferredLocale = __importStar(require("./PreferredLocale"));
 const logout = __importStar(require("./Logout"));
 const register = __importStar(require("./Register"));
 const socialAuth = __importStar(require("./SocialAuth"));
@@ -47,6 +48,7 @@ exports.AuthController = {
     ...creatorApplication,
     ...getMe,
     ...login,
+    ...preferredLocale,
     ...logout,
     ...register,
     ...socialAuth,

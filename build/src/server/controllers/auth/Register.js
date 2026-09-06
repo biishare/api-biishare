@@ -65,8 +65,9 @@ const register = async (req, res) => {
         });
     }
     catch (error) {
-        if ((error === null || error === void 0 ? void 0 : error.code) === 11000) {
-            const duplicatedField = Object.keys(error.keyPattern || {})[0];
+        const mongoError = error;
+        if (mongoError.code === 11000) {
+            const duplicatedField = Object.keys(mongoError.keyPattern || {})[0];
             res.status(409).json({
                 error: duplicatedField === "username"
                     ? "Este username ja esta em uso."

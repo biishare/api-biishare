@@ -44,7 +44,7 @@ export const getAds = async (
 
     /* ---------- FILTERS ---------- */
 
-    const filters: any = {
+    const filters: Record<string, unknown> = {
       active: isActive,
     };
 
@@ -121,7 +121,7 @@ export const getAds = async (
 
       data,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(
       "Erro ao buscar ads:",
       error
@@ -129,7 +129,7 @@ export const getAds = async (
 
     res.status(500).json({
       error:
-        error?.message ||
+        (error instanceof Error ? error.message : undefined) ||
         "Failed to fetch ads",
     });
   }

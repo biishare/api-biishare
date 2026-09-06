@@ -63,7 +63,7 @@ const detectPublicationMediaKind = (file) => {
 };
 exports.detectPublicationMediaKind = detectPublicationMediaKind;
 const getPublicationResourceType = (type) => type === "video" ? "video" : "image";
-const getPublicationThumbnailUrl = ({ publicId, type, url, }) => {
+const getPublicationThumbnailUrl = ({ publicId, type, }) => {
     if (type === "image") {
         return cloudinary_1.v2.url(publicId, {
             secure: true,
@@ -146,7 +146,7 @@ const uploadPublicationMediaToCloudinary = async ({ file, userId, }) => {
     const response = {
         type,
         url,
-        thumbnailUrl: getPublicationThumbnailUrl({ publicId: uploadResult.public_id, type, url }),
+        thumbnailUrl: getPublicationThumbnailUrl({ publicId: uploadResult.public_id, type }),
         originalName: file.originalname,
         title: getBaseName(file.originalname),
         bytes: file.size,

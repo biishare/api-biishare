@@ -90,6 +90,10 @@ const toqueSchema = new mongoose_1.Schema({
         type: toqueMediaSchema,
         default: undefined,
     },
+    images: {
+        type: [toqueMediaSchema],
+        default: undefined,
+    },
     isPublished: {
         type: Boolean,
         default: true,
@@ -98,25 +102,34 @@ const toqueSchema = new mongoose_1.Schema({
 /* ======================================================
  * INDICES
  * ====================================================== */
-toqueSchema.index({ createdAt: -1 });
+toqueSchema.index({ createdAt: -1, _id: -1 });
 toqueSchema.index({ creatorId: 1, createdAt: -1 });
-toqueSchema.index({ area: 1, createdAt: -1 });
+toqueSchema.index({ area: 1, createdAt: -1, _id: -1 });
 toqueSchema.index({ mediaType: 1, createdAt: -1 });
 /* ======================================================
  * BUSINESS RULE
  * ====================================================== */
 toqueSchema.pre("validate", function () {
-    var _a, _b;
+    var _a, _b, _c;
     if (this.mediaType === "video") {
-        this.image = undefined;
+        this.images = undefined;
+        if (this.image && !this.image.url) {
+            this.image = undefined;
+        }
         if (!((_a = this.video) === null || _a === void 0 ? void 0 : _a.url)) {
-            this.invalidate("video", "Toque do tipo vídeo precisa de uma URL válida");
+            this.invalidate("video", "Toque do tipo video precisa de uma URL valida");
         }
     }
     if (this.mediaType === "image") {
         this.video = undefined;
-        if (!((_b = this.image) === null || _b === void 0 ? void 0 : _b.url)) {
-            this.invalidate("image", "Toque do tipo imagem precisa de uma URL válida");
+        const imageItems = ((_b = this.images) !== null && _b !== void 0 ? _b : []).filter((item) => item === null || item === void 0 ? void 0 : item.url);
+        if (imageItems.length === 0 && ((_c = this.image) === null || _c === void 0 ? void 0 : _c.url)) {
+            imageItems.push({ url: this.image.url });
+        }
+        this.images = imageItems;
+        this.image = imageItems[0];
+        if (imageItems.length === 0) {
+            this.invalidate("images", "Toque do tipo imagem precisa de pelo menos uma URL valida");
         }
     }
 });
