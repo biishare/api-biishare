@@ -1,0 +1,140 @@
+diff --git a/src/server/models/post/app.ts b/src/server/models/post/app.ts
+--- a/src/server/models/post/app.ts
++++ b/src/server/models/post/app.ts
+@@ -20,4 +20,5 @@
+   url: string;
+   thumbnailUrl?: string;
+   totalPages?: number;
++  durationSeconds?: number;
+ }
+@@ -108,6 +109,12 @@
+     totalPages: {
+       type: Number,
+       min: 1,
+       default: undefined,
+     },
++
++    durationSeconds: {
++      type: Number,
++      min: 0,
++      default: undefined,
++    },
+   },
+@@ -384,12 +391,4 @@
+     if (!this.documents || this.documents.length === 0) {
+       throw new Error("Post do tipo documento deve conter pelo menos um documento");
+     }
+-
+-    const invalidDoc = this.documents.find(
+-      doc => !doc.totalPages || doc.totalPages < 1
+-    );
+-
+-    if (invalidDoc) {
+-      throw new Error("Todo documento deve possuir o numero total de paginas");
+-    }
+   }
+@@ -412,19 +411,14 @@
+     if (!this.playlist || this.playlist.length === 0) {
+       throw new Error("Playlist deve conter pelo menos um item");
+     }
+ 
+     const invalidItem = this.playlist.find(
+-      item => item.kind !== "video" && item.kind !== "document"
++      item =>
++        item.kind !== "video" &&
++        item.kind !== "document" &&
++        item.kind !== "image"
+     );
+ 
+     if (invalidItem) {
+-      throw new Error("Playlist aceita apenas videos e documentos");
+-    }
+-
+-    const invalidDoc = this.playlist.find(
+-      item => item.kind === "document" && (!item.totalPages || item.totalPages < 1)
+-    );
+-
+-    if (invalidDoc) {
+-      throw new Error("Documentos da playlist devem possuir numero total de paginas");
++      throw new Error("Playlist aceita apenas videos, documentos e imagens");
+     }
+   }
+diff --git a/src/server/controllers/post/Create.ts b/src/server/controllers/post/Create.ts
+--- a/src/server/controllers/post/Create.ts
++++ b/src/server/controllers/post/Create.ts
+@@ -11,2 +11,1 @@
+-type DocumentPayload = { totalPages?: unknown };
+-type PlaylistPayload = { kind?: unknown; totalPages?: unknown };
++type PlaylistPayload = { kind?: unknown };
+@@ -81,9 +80,0 @@
+-      const invalidDoc = documents.find((doc: unknown) => {
+-        const documentPayload = doc as DocumentPayload;
+-        return typeof documentPayload.totalPages !== "number" || documentPayload.totalPages < 1;
+-      });
+-
+-      if (invalidDoc) {
+-        res.status(400).json({ error: "Todo documento deve conter o numero total de paginas." });
+-        return;
+-      }
+@@ -103,20 +93,11 @@
+       const invalidItem = playlist.find((item: unknown) => {
+         const playlistPayload = item as PlaylistPayload;
+-        return playlistPayload.kind !== "video" && playlistPayload.kind !== "document";
++        return playlistPayload.kind !== "video" &&
++          playlistPayload.kind !== "document" &&
++          playlistPayload.kind !== "image";
+       });
+ 
+       if (invalidItem) {
+-        res.status(400).json({ error: "Playlist aceita apenas videos e documentos." });
+-        return;
+-      }
+-
+-      const invalidDoc = playlist.find((item: unknown) => {
+-        const playlistPayload = item as PlaylistPayload;
+-        return playlistPayload.kind === "document" &&
+-          (typeof playlistPayload.totalPages !== "number" || playlistPayload.totalPages < 1);
+-      });
+-
+-      if (invalidDoc) {
+-        res.status(400).json({ error: "Documentos da playlist precisam do numero total de paginas." });
++        res.status(400).json({ error: "Playlist aceita apenas videos, documentos e imagens." });
+         return;
+       }
+diff --git a/src/server/services/cloudinary.ts b/src/server/services/cloudinary.ts
+--- a/src/server/services/cloudinary.ts
++++ b/src/server/services/cloudinary.ts
+@@ -11,4 +11,5 @@
+   title: string;
+   bytes: number;
+   totalPages?: number;
++  durationSeconds?: number;
+ };
+@@ -61,8 +62,3 @@
+ const getBaseName = (fileName: string) =>
+   fileName.replace(/\.[^.]+$/, "").trim() || "Ficheiro";
+ 
+-const countPdfPages = (buffer: Buffer): number => {
+-  const text = buffer.toString("latin1");
+-  const matches = text.match(/\/Type\s*\/Page\b/g);
+-  return Math.max(1, matches?.length ?? 1);
+-};
+-
+ export const detectPublicationMediaKind = (file: Express.Multer.File): PublicationMediaKind | null => {
+@@ -223,3 +219,15 @@
+   if (type === "document") {
+-    response.totalPages = countPdfPages(file.buffer);
++    const pages = Number(uploadResult.pages);
++
++    if (Number.isFinite(pages) && pages >= 1) {
++      response.totalPages = Math.floor(pages);
++    }
++  }
++
++  if (type === "video") {
++    const duration = Number(uploadResult.duration);
++
++    if (Number.isFinite(duration) && duration >= 0) {
++      response.durationSeconds = duration;
++    }
+   }

@@ -8,8 +8,7 @@ import { normalizeSubjectIds } from "./utils";
 
 const CONTENT_TYPES: PostContentType[] = ["video", "document", "image", "playlist"];
 
-type DocumentPayload = { totalPages?: unknown };
-type PlaylistPayload = { kind?: unknown; totalPages?: unknown };
+type PlaylistPayload = { kind?: unknown };
 
 const isContentType = (value: unknown): value is PostContentType =>
   typeof value === "string" && CONTENT_TYPES.includes(value as PostContentType);
@@ -78,15 +77,6 @@ export const create = async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      const invalidDoc = documents.find((doc: unknown) => {
-        const documentPayload = doc as DocumentPayload;
-        return typeof documentPayload.totalPages !== "number" || documentPayload.totalPages < 1;
-      });
-
-      if (invalidDoc) {
-        res.status(400).json({ error: "Todo documento deve conter o numero total de paginas." });
-        return;
-      }
     }
 
     if (contentType === "image" && (!Array.isArray(images) || images.length === 0)) {
@@ -102,22 +92,13 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
       const invalidItem = playlist.find((item: unknown) => {
         const playlistPayload = item as PlaylistPayload;
-        return playlistPayload.kind !== "video" && playlistPayload.kind !== "document";
+        return playlistPayload.kind !== "video" &&
+          playlistPayload.kind !== "document" &&
+          playlistPayload.kind !== "image";
       });
 
       if (invalidItem) {
-        res.status(400).json({ error: "Playlist aceita apenas videos e documentos." });
-        return;
-      }
-
-      const invalidDoc = playlist.find((item: unknown) => {
-        const playlistPayload = item as PlaylistPayload;
-        return playlistPayload.kind === "document" &&
-          (typeof playlistPayload.totalPages !== "number" || playlistPayload.totalPages < 1);
-      });
-
-      if (invalidDoc) {
-        res.status(400).json({ error: "Documentos da playlist precisam do numero total de paginas." });
+        res.status(400).json({ error: "Playlist aceita apenas videos, documentos e imagens." });
         return;
       }
     }

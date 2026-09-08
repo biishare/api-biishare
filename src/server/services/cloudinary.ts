@@ -11,6 +11,7 @@ export type PublicationMediaUploadResult = {
   title: string;
   bytes: number;
   totalPages?: number;
+  durationSeconds?: number;
 };
 
 const ensureCloudinaryConfig = () => {
@@ -60,12 +61,6 @@ const getDeliveryTransformation = (slot: ProfileImageSlot) => {
 
 const getBaseName = (fileName: string) =>
   fileName.replace(/\.[^.]+$/, "").trim() || "Ficheiro";
-
-const countPdfPages = (buffer: Buffer): number => {
-  const text = buffer.toString("latin1");
-  const matches = text.match(/\/Type\s*\/Page\b/g);
-  return Math.max(1, matches?.length ?? 1);
-};
 
 export const detectPublicationMediaKind = (file: Express.Multer.File): PublicationMediaKind | null => {
   const mimetype = file.mimetype.toLowerCase();
@@ -221,7 +216,19 @@ export const uploadPublicationMediaToCloudinary = async ({
   };
 
   if (type === "document") {
-    response.totalPages = countPdfPages(file.buffer);
+    const pages = Number(uploadResult.pages);
+
+    if (Number.isFinite(pages) && pages >= 1) {
+      response.totalPages = Math.floor(pages);
+    }
+  }
+
+  if (type === "video") {
+    const duration = Number(uploadResult.duration);
+
+    if (Number.isFinite(duration) && duration >= 0) {
+      response.durationSeconds = duration;
+    }
   }
 
   return response;

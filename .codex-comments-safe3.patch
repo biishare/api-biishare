@@ -1,0 +1,38 @@
+diff --git a/src/server/controllers/post/app.ts b/src/server/controllers/post/app.ts
+--- a/src/server/controllers/post/app.ts
++++ b/src/server/controllers/post/app.ts
+@@ -6,15 +6,17 @@ import * as deletePost from './Delete'
+ import * as savedPosts from './Saved'
+ import * as uploadMedia from './UploadMedia'
++import * as comments from './Comments'
+ 
+ export const PostController = {
+   ...create,
+   ...getPosts,
+   ...getPostFilters,
+   ...getPostById,
+   ...update,
+   ...deletePost,
+   ...savedPosts,
+   ...uploadMedia,
++  ...comments,
+ }
+diff --git a/src/server/routes/routes.ts b/src/server/routes/routes.ts
+--- a/src/server/routes/routes.ts
++++ b/src/server/routes/routes.ts
+@@ -61,6 +61,7 @@ router.get("/", (req: Request, res: Response) => {
+         saved: "GET /posts/saved",
+         save: "POST /posts/:id/save",
+         unsave: "DELETE /posts/:id/save",
+         savedStatus: "GET /posts/:id/save",
++        comments: "GET/POST /posts/:id/comments",
+       },
+       toques: {
+@@ -131,6 +132,8 @@ router.get("/posts/saved", authenticate, PostController.getSavedPosts);
+ router.get("/posts/:id/save", authenticate, PostController.getSavedPostStatus);
+ router.post("/posts/:id/save", authenticate, PostController.savePost);
+ router.delete("/posts/:id/save", authenticate, PostController.deleteSavedPost);
++router.get("/posts/:id/comments", PostController.getPostComments);
++router.post("/posts/:id/comments", authenticate, PostController.createPostComment);
+ router.get("/posts/:id", PostController.getPostById);
+ router.post("/posts", authenticate, requireCreator, PostController.create);

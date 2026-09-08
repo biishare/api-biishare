@@ -63,6 +63,7 @@ router.get("/", (req: Request, res: Response) => {
         save: "POST /posts/:id/save",
         unsave: "DELETE /posts/:id/save",
         savedStatus: "GET /posts/:id/save",
+        comments: "GET/POST /posts/:id/comments",
       },
       toques: {
         list: "GET /toques",
@@ -132,6 +133,8 @@ router.get("/posts/saved", authenticate, PostController.getSavedPosts);
 router.get("/posts/:id/save", authenticate, PostController.getSavedPostStatus);
 router.post("/posts/:id/save", authenticate, PostController.savePost);
 router.delete("/posts/:id/save", authenticate, PostController.deleteSavedPost);
+router.get("/posts/:id/comments", PostController.getPostComments);
+router.post("/posts/:id/comments", authenticate, PostController.createPostComment);
 router.get("/posts/:id", PostController.getPostById);
 router.post("/posts", authenticate, requireCreator, PostController.create);
 router.put("/posts/:postId", authenticate, requireCreator, PostController.update);

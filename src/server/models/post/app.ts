@@ -20,6 +20,7 @@ export interface IMediaItem {
   url: string;
   thumbnailUrl?: string;
   totalPages?: number;
+  durationSeconds?: number;
 }
 
 export interface ITranslatedMediaItem {
@@ -108,6 +109,12 @@ const mediaSchema = new Schema<IMediaItem>(
     totalPages: {
       type: Number,
       min: 1,
+      default: undefined,
+    },
+
+    durationSeconds: {
+      type: Number,
+      min: 0,
       default: undefined,
     },
   },
@@ -384,14 +391,6 @@ postSchema.pre("validate", function () {
     if (!this.documents || this.documents.length === 0) {
       throw new Error("Post do tipo documento deve conter pelo menos um documento");
     }
-
-    const invalidDoc = this.documents.find(
-      doc => !doc.totalPages || doc.totalPages < 1
-    );
-
-    if (invalidDoc) {
-      throw new Error("Todo documento deve possuir o numero total de paginas");
-    }
   }
 
   if (this.contentType === "image") {
@@ -414,19 +413,14 @@ postSchema.pre("validate", function () {
     }
 
     const invalidItem = this.playlist.find(
-      item => item.kind !== "video" && item.kind !== "document"
+      item =>
+        item.kind !== "video" &&
+        item.kind !== "document" &&
+        item.kind !== "image"
     );
 
     if (invalidItem) {
-      throw new Error("Playlist aceita apenas videos e documentos");
-    }
-
-    const invalidDoc = this.playlist.find(
-      item => item.kind === "document" && (!item.totalPages || item.totalPages < 1)
-    );
-
-    if (invalidDoc) {
-      throw new Error("Documentos da playlist devem possuir numero total de paginas");
+      throw new Error("Playlist aceita apenas videos, documentos e imagens");
     }
   }
 });

@@ -1,0 +1,37 @@
+diff --git a/src/server/services/cloudinary.ts b/src/server/services/cloudinary.ts
+--- a/src/server/services/cloudinary.ts
++++ b/src/server/services/cloudinary.ts
+@@ -11,4 +11,5 @@
+   title: string;
+   bytes: number;
+   totalPages?: number;
++  durationSeconds?: number;
+ };
+@@ -61,10 +62,4 @@
+ const getBaseName = (fileName: string) =>
+   fileName.replace(/\.[^.]+$/, "").trim() || "Ficheiro";
+ 
+-const countPdfPages = (buffer: Buffer): number => {
+-  const text = buffer.toString("latin1");
+-  const matches = text.match(/\/Type\s*\/Page\b/g);
+-  return Math.max(1, matches?.length ?? 1);
+-};
+-
+ export const detectPublicationMediaKind = (file: Express.Multer.File): PublicationMediaKind | null => {
+@@ -223,3 +218,15 @@
+   if (type === "document") {
+-    response.totalPages = countPdfPages(file.buffer);
++    const pages = Number(uploadResult.pages);
++
++    if (Number.isFinite(pages) && pages >= 1) {
++      response.totalPages = Math.floor(pages);
++    }
++  }
++
++  if (type === "video") {
++    const duration = Number(uploadResult.duration);
++
++    if (Number.isFinite(duration) && duration >= 0) {
++      response.durationSeconds = duration;
++    }
+   }
